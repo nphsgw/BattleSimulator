@@ -409,6 +409,15 @@ NumPy の乱数分布をラップするクラス。
 - `show_hp`
 - `show_target_lines`
 - `show_terrain_text`
+- `interval`
+
+### Notebook Interaction
+`examples/debug-visualization.ipynb` では `ipywidgets` を使い、debug 可視化の表示項目を notebook 上で切り替えられる。
+現時点で切り替えられる項目:
+- HP バー
+- target line
+- terrain overlay text
+- frame index
 
 ### Planned Visualization Direction
 独自拡張では、通常表示とデバッグ表示を分けて扱う方針を取る。

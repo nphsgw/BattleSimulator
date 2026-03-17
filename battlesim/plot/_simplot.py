@@ -19,7 +19,7 @@ from battlesim._utils import slice_loop
 from battlesim.terra._terrain import Terrain
 
 # all functions to import
-__all__ = ["quiver_fight", "quiver_fight_debug"]
+__all__ = ["quiver_fight", "quiver_fight_debug", "quiver_frame_debug"]
 
 
 def _resolve_allegiance_metadata(
@@ -146,6 +146,7 @@ def quiver_fight(
     terrain: Terrain | None = None,
     allegiance_label: Mapping[object, str] | None = None,
     allegiance_color: Mapping[object, str] | Sequence[str] | None = None,
+    interval: int = 100,
 ):
     """
     Generates an animated quiver plot with units moving around the arena
@@ -244,7 +245,7 @@ def quiver_fight(
         return (*qalive, *dead)
 
     return animation.FuncAnimation(
-        fig, _animate, init_func=_init, interval=100, frames=n_frames, blit=True
+        fig, _animate, init_func=_init, interval=interval, frames=n_frames, blit=True
     )
 
 
@@ -256,6 +257,7 @@ def quiver_fight_debug(
     show_hp: bool = True,
     show_target_lines: bool = True,
     show_terrain_text: bool = False,
+    interval: int = 100,
 ):
     """
     Generates a debug-friendly animated quiver plot.
@@ -415,5 +417,124 @@ def quiver_fight_debug(
         return (*qalive, *dead, *target_lines, *hp_bars, *terrain_text)
 
     return animation.FuncAnimation(
-        fig, _animate, init_func=_init, interval=100, frames=n_frames, blit=True
+        fig, _animate, init_func=_init, interval=interval, frames=n_frames, blit=True
     )
+
+
+def quiver_frame_debug(
+    frames: np.ndarray,
+    frame_i: int = 0,
+    terrain: Terrain | None = None,
+    allegiance_label: Mapping[object, str] | None = None,
+    allegiance_color: Mapping[object, str] | Sequence[str] | None = None,
+    show_hp: bool = True,
+    show_target_lines: bool = True,
+    show_terrain_text: bool = False,
+) -> tuple[plt.Figure, plt.Axes]:
+    """
+    Draws a single debug frame for notebook inspection.
+    """
+    frame_index = max(0, min(frame_i, frames.shape[0] - 1))
+    frame = frames[frame_index]
+    fig, ax, _allegiances, _labels, allegiance_color, combs = _setup_axes(
+        frames, terrain, allegiance_label, allegiance_color
+    )
+
+    xmin, xmax, ymin, ymax = _get_plot_bounds(frames, terrain)
+    plot_span = max(xmax - xmin, ymax - ymin, 1.0)
+    hp_bar_width = plot_span * 0.04
+    hp_bar_offset = plot_span * 0.015
+    max_hp = np.maximum(frames["hp"].max(axis=0), 1.0)
+    has_terrain_fields = _has_terrain_overlay_fields(frames)
+
+    for team, unit_type in combs:
+        team_type_i = np.logical_and(frame["team"] == team, frame["utype"] == unit_type)
+        alive = frame["hp"] > 0.0
+        new_alive = frame[np.logical_and(team_type_i, alive)]
+        new_dead = frame[np.logical_and(team_type_i, ~alive)]
+
+        if len(new_alive) > 0:
+            ax.quiver(
+                new_alive["x"],
+                new_alive["y"],
+                new_alive["ddx"],
+                new_alive["ddy"],
+                color=allegiance_color[team],
+                alpha=0.6,
+                scale=30,
+                width=0.015,
+                pivot="mid",
+                zorder=4,
+            )
+        if len(new_dead) > 0:
+            ax.plot(
+                new_dead["x"],
+                new_dead["y"],
+                "x",
+                color=allegiance_color[team],
+                alpha=0.25,
+                markersize=5.0,
+                zorder=5,
+            )
+
+    for unit_i in range(frame.shape[0]):
+        alive = frame["hp"][unit_i] > 0.0
+        if not alive:
+            continue
+
+        unit_color = allegiance_color[frame["team"][unit_i]]
+        x_i = float(frame["x"][unit_i])
+        y_i = float(frame["y"][unit_i])
+
+        if show_target_lines:
+            target_i = int(frame["target"][unit_i])
+            if 0 <= target_i < frame.shape[0]:
+                ax.plot(
+                    [x_i, frame["x"][target_i]],
+                    [y_i, frame["y"][target_i]],
+                    linestyle="--",
+                    linewidth=0.8,
+                    color=unit_color,
+                    alpha=0.25,
+                    zorder=2,
+                )
+
+        if show_hp:
+            hp_ratio = float(np.clip(frame["hp"][unit_i] / max_hp[unit_i], 0.0, 1.0))
+            x0 = x_i - (hp_bar_width / 2.0)
+            y0 = y_i + hp_bar_offset
+            ax.plot(
+                [x0, x0 + (hp_bar_width * hp_ratio)],
+                [y0, y0],
+                linewidth=2.2,
+                solid_capstyle="round",
+                color=_hp_color(hp_ratio),
+                zorder=6,
+            )
+
+        if show_terrain_text and has_terrain_fields:
+            ax.text(
+                x_i,
+                y_i + (hp_bar_offset * 2.2),
+                "\n".join(
+                    [
+                        f"z {frame['z'][unit_i]:.2f}",
+                        f"mv {frame['move_factor'][unit_i]:.2f}  rg {frame['effective_range'][unit_i]:.2f}",
+                        f"dmg {frame['damage_factor'][unit_i]:.2f}",
+                    ]
+                ),
+                fontsize=6,
+                ha="center",
+                va="bottom",
+                zorder=7,
+                bbox={
+                    "boxstyle": "round,pad=0.15",
+                    "facecolor": "white",
+                    "alpha": 0.45,
+                    "edgecolor": "none",
+                },
+            )
+
+    ax.set_title(f"Frame {frame_index}")
+    fig.tight_layout()
+    return fig, ax

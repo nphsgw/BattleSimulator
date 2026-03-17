@@ -6,6 +6,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import matplotlib
+import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 
 import battlesim as bsm
@@ -36,6 +37,15 @@ def test_quiver_fight_debug_accepts_terrain_overlay():
     anim = bsm.quiver_fight_debug(battle.sim_, show_terrain_text=True)
 
     assert isinstance(anim, FuncAnimation)
+
+
+def test_quiver_fight_debug_accepts_custom_interval():
+    battle = _build_small_battle()
+
+    anim = bsm.quiver_fight_debug(battle.sim_, interval=180)
+
+    assert isinstance(anim, FuncAnimation)
+    assert anim.event_source.interval == 180
 
 
 def test_sim_jupyter_accepts_debug_plotter():
@@ -73,3 +83,13 @@ def test_simulate_records_terrain_overlay_fields_for_flat_terrain():
     assert (frame0["move_factor"] == 1.0).all()
     assert (frame0["damage_factor"] == 1.0).all()
     assert (frame0["effective_range"] == matrix["range"]).all()
+
+
+def test_quiver_frame_debug_returns_figure_and_axes():
+    battle = _build_small_battle()
+
+    fig, ax = bsm.quiver_frame_debug(battle.sim_, frame_i=0, show_terrain_text=True)
+
+    assert fig is not None
+    assert ax is not None
+    plt.close(fig)

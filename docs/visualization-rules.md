@@ -137,6 +137,10 @@
 - 既定値は `False` とし、debug view でも必要時に有効化する
 - 死亡ユニットの terrain overlay は表示しない
 
+### Notebook Controls
+- notebook 上では widget から `show_hp`, `show_target_lines`, `show_terrain_text` を切り替えられるようにする
+- notebook 上では `frame index` を slider から調整できるようにする
+
 ### Background Interaction
 - terrain 自体は今まで通り背景に表示する
 - terrain overlay のテキストは地形背景より前面に描く

@@ -79,6 +79,9 @@ If you prefer activating the generated virtual environment directly::
     source .venv/bin/activate
     jupyter notebook
 
+The ``notebook`` extra includes the Jupyter stack plus ``ipywidgets`` for the
+interactive visualization notebook.
+
 Running Tests
 ~~~~~~~~~~~~~
 
