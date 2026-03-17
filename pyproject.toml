@@ -63,7 +63,7 @@ python-version = "3.12"
 root = ["."]
 
 [tool.ty.src]
-include = ["battlesim"]
+include = ["battlesim", "tests"]
 exclude = ["examples", "teaching"]
 
 [project.urls]

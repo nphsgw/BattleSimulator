@@ -98,12 +98,11 @@ For the recommended read-only validation workflow, use::
 
     make check
 
-The default ``ruff`` workflow currently targets ``battlesim/`` and ``tests/``.
-The default ``ty`` workflow starts with ``battlesim/`` only, so we can adopt
-type checking incrementally without test cases that intentionally pass invalid
-inputs becoming noise. The notebook-heavy ``examples/`` and ``teaching/``
-directories are intentionally excluded from day-to-day static analysis and type
-checking.
+The default ``ruff`` and ``ty`` workflow currently targets ``battlesim/`` and
+the test suite. Some tests intentionally pass invalid values to verify runtime
+validation, so those cases are annotated to make that intent explicit to the
+type checker. The notebook-heavy ``examples/`` and ``teaching/`` directories
+are intentionally excluded from day-to-day static analysis and type checking.
 
 How to use: The Basics
 ----------------------

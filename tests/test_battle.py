@@ -7,6 +7,7 @@ Created on Mon Sep 30 11:20:25 2019
 """
 
 from pathlib import Path
+from typing import Any, cast
 
 import numpy as np
 import pandas as pd
@@ -36,21 +37,21 @@ def test_battle_create_army(battle: bsm.Battle):
     # battle object requires input file
     # try normal
     with pytest.raises(TypeError):
-        battle.create_army("Hello")
+        battle.create_army(cast(Any, "Hello"))
     with pytest.raises(TypeError):
-        battle.create_army(pd.DataFrame({"ho": [1, 2], "hi": [2, 3]}))
+        battle.create_army(cast(Any, pd.DataFrame({"ho": [1, 2], "hi": [2, 3]})))
     with pytest.raises(TypeError):
-        battle.create_army(["Clone"])
+        battle.create_army(cast(Any, ["Clone"]))
     with pytest.raises(TypeError):
-        battle.create_army(["Clone", 2])
+        battle.create_army(cast(Any, ["Clone", 2]))
 
     with pytest.raises(TypeError):
-        battle.create_army([("Clone", 2)])
-        battle.create_army([("Droid", 10), ("Clone Trooper", 5)])
+        battle.create_army(cast(Any, [("Clone", 2)]))
+        battle.create_army(cast(Any, [("Droid", 10), ("Clone Trooper", 5)]))
 
     with pytest.raises(TypeError):
-        battle.create_army([("Clone Trooper", "hello")])
-        battle.create_army([("B1 battledroid", np.inf)])
+        battle.create_army(cast(Any, [("Clone Trooper", "hello")]))
+        battle.create_army(cast(Any, [("B1 battledroid", np.inf)]))
 
     # created normally.
     comp = [bsm.Composite("B1 battledroid", 10), bsm.Composite("Clone Trooper", 10)]

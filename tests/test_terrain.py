@@ -6,6 +6,8 @@ Created on Thu Oct 10 16:17:14 2019
 @author: gparkes
 """
 
+from typing import Any, cast
+
 import pytest
 
 # import local
@@ -17,15 +19,15 @@ def test_define_terrain():
     _ = bsm.Terrain()
     # test with bad settings.
     with pytest.raises(TypeError):
-        bsm.Terrain("hello")
+        bsm.Terrain(cast(Any, "hello"))
     with pytest.raises(TypeError):
-        bsm.Terrain(42)
+        bsm.Terrain(cast(Any, 42))
     with pytest.raises(TypeError):
-        bsm.Terrain((0, 10, 0, 10), "hello", "contour")
+        bsm.Terrain((0, 10, 0, 10), cast(Any, "hello"), "contour")
     with pytest.raises(AttributeError):
-        bsm.Terrain((0, 10, 0, 10), 0.1, 42)
+        bsm.Terrain((0, 10, 0, 10), 0.1, cast(Any, 42))
     with pytest.raises(AttributeError):
-        bsm.Terrain((0, 10, 0), 0.1, "contour")
+        bsm.Terrain(cast(Any, (0, 10, 0)), 0.1, "contour")
     with pytest.raises(TypeError):
         bsm.Terrain((0, 10, 0, 10), -1, "contour")
     with pytest.raises(AttributeError):
@@ -33,9 +35,9 @@ def test_define_terrain():
     with pytest.raises(AttributeError):
         bsm.Terrain((0, 10, 0, -1), 0.1, "contour")
     with pytest.raises(TypeError):
-        bsm.Terrain((0, [0, 1], "hi", 10), 0.1, "contour")
+        bsm.Terrain(cast(Any, (0, [0, 1], "hi", 10)), 0.1, "contour")
     with pytest.raises(AttributeError):
-        bsm.Terrain((0, 10, 0, 10), 0.1, "hello contour boy")
+        bsm.Terrain((0, 10, 0, 10), 0.1, cast(Any, "hello contour boy"))
 
     bsm.Terrain((0, 10, 0, 10), 0.1, None)
 
@@ -59,9 +61,9 @@ def test_generate():
     T.generate()
 
     with pytest.raises(TypeError):
-        T.generate("hello")
+        T.generate(cast(Any, "hello"))
     with pytest.raises(TypeError):
-        T.generate(42)
+        T.generate(cast(Any, 42))
     # generate with function that does not have 2 parameters
 
     # generate with function that does not pass 2 numpy arrays
