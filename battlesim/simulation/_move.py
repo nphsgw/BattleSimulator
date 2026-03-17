@@ -11,7 +11,7 @@ There is the default 'move' and fancier options such as A*.
 """
 
 import numpy as np
-from numba import jit
+from numba import njit
 from numpy.typing import NDArray
 
 __all__ = ["to_enemy"]
@@ -26,7 +26,7 @@ Parameters
 """
 
 
-@jit
+@njit
 def to_enemy(
     M,
     delta_x: NDArray[np.float64],
@@ -52,7 +52,7 @@ def to_enemy(
     M["y"][i] += (delta_y[i] / dist_i) * terrain_tick
 
 
-@jit
+@njit
 def from_enemy(
     M,
     delta_x: NDArray[np.float64],

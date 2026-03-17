@@ -7,17 +7,16 @@ Created on Tue Oct  8 11:07:18 2019
 """
 
 import math
-from typing import List
 
 import numpy as np
-from numba import jit
+from numba import njit
 from numpy.typing import NDArray
 
 from . import _damage, _hit, _move
 from ._target import nearest
 
 
-def get_function_names() -> List[str]:
+def get_function_names() -> list[str]:
     """Returns the function names."""
     return ["aggressive", "hit_and_run"]
 
@@ -25,7 +24,7 @@ def get_function_names() -> List[str]:
 __all__ = get_function_names()
 
 
-@jit
+@njit
 def _select_enemy(M, enemies: NDArray[np.uint], i: int) -> bool:
     if M["hp"][M["target"][i]] <= 0:
         if enemies.shape[0] > 0:
@@ -49,7 +48,7 @@ def _select_enemy(M, enemies: NDArray[np.uint], i: int) -> bool:
 #               enemies, allies, Z, Z_xi, Z_yi, i
 
 
-@jit
+@njit
 def aggressive(
     M,
     luck: NDArray[np.float64],
@@ -90,7 +89,7 @@ def aggressive(
         return False
 
 
-@jit
+@njit
 def hit_and_run(
     M,
     luck: NDArray[np.float64],

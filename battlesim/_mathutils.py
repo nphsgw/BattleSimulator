@@ -1,11 +1,11 @@
 """Various utilities for fast computation of things within the simulation."""
 
 import numpy as np
-from numba import jit
+from numba import njit
 from numpy.typing import NDArray
 
 
-@jit
+@njit
 def boundary_check(
     bxmin: float,
     bxmax: float,
@@ -21,7 +21,7 @@ def boundary_check(
     y_pos[y_pos > bymax] = bymax
 
 
-@jit
+@njit
 def boundary_check2(bounds, X, Y):
     """performs boundary checks on our locations movement inplace"""
     X[X < bounds[0]] = bounds[0]
@@ -30,7 +30,7 @@ def boundary_check2(bounds, X, Y):
     Y[Y > bounds[3]] = bounds[3]
 
 
-@jit
+@njit
 def euclidean_distance(
     delta_x: NDArray[np.float64], delta_y: NDArray[np.float64]
 ) -> NDArray[np.float64]:
@@ -42,7 +42,7 @@ def euclidean_distance(
     return distance
 
 
-@jit
+@njit
 def sq_euclidean_distance(
     delta_x: NDArray[np.float64], delta_y: NDArray[np.float64]
 ) -> NDArray[np.float64]:
@@ -54,7 +54,7 @@ def sq_euclidean_distance(
     return distance
 
 
-@jit
+@njit
 def sq_euclidean_distance2(
     x_pos: NDArray[np.float64],
     y_pos: NDArray[np.float64],
@@ -67,7 +67,7 @@ def sq_euclidean_distance2(
     )
 
 
-@jit
+@njit
 def sq_distance_matrix(
     x_pos: NDArray[np.float64], y_pos: NDArray[np.float64]
 ) -> NDArray[np.float64]:
@@ -84,7 +84,7 @@ def sq_distance_matrix(
     return distance
 
 
-@jit
+@njit
 def matrix_argmin(x_pos: NDArray[np.float64]) -> NDArray[np.int64]:
     """Calculates argmin along axis=1 dim."""
     mins = np.empty(x_pos.shape[0], dtype=np.int64)
@@ -93,14 +93,14 @@ def matrix_argmin(x_pos: NDArray[np.float64]) -> NDArray[np.int64]:
     return mins
 
 
-@jit
+@njit
 def minmax(mat: NDArray[np.float64]) -> NDArray[np.float64]:
     """Scales X into the [0, 1] range."""
     xm = np.min(mat)
     return (mat - xm) / (np.max(mat) - xm)
 
 
-@jit
+@njit
 def no_mean(mat: NDArray[np.float64]) -> NDArray[np.float64]:
     """Remove the mean from every value in X."""
     return mat - np.mean(mat)

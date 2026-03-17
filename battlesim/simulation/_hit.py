@@ -9,11 +9,11 @@ Performs calculations on the 'hit chance' of various attacks.
 """
 
 import numpy as np
-from numba import jit
+from numba import njit
 from numpy.typing import NDArray
 
 
-@jit
+@njit
 def basic_chance(
     M, dist: NDArray[np.float64], i: int, global_penalty: float = 15.0
 ) -> float:

@@ -9,7 +9,7 @@ This file determines different background 'terrains' to have for any given map.
 This can be fixed size or infinite if it follows some mathematical function.
 """
 
-from typing import Callable, Optional, Tuple
+from collections.abc import Callable
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -21,10 +21,10 @@ from battlesim._mathutils import minmax
 
 from ._noise import create_perlin_map
 
-TUPLE4 = Tuple[float, float, float, float]
+TUPLE4 = tuple[float, float, float, float]
 
 
-def get_tile_size(dim: TUPLE4, res: float) -> Tuple[int, int]:
+def get_tile_size(dim: TUPLE4, res: float) -> tuple[int, int]:
     """Returns the tile size of the resolution."""
     return int(np.abs(dim[0] - dim[1]) // res), int(np.abs(dim[2] - dim[3]) // res)
 
@@ -48,8 +48,8 @@ class Terrain:
         self,
         dim: TUPLE4 = (0.0, 10.0, 0.0, 10.0),
         res: float = 0.1,
-        form: Optional[str] = "contour",
-        dtype: Optional[str] = "perlin",
+        form: str | None = "contour",
+        dtype: str | None = "perlin",
     ):
         """
         Defines a Terrain object.
@@ -75,12 +75,12 @@ class Terrain:
         self.dtype = dtype
 
     @property
-    def form_(self) -> Optional[str]:
+    def form_(self) -> str | None:
         """Determines the appearance of the terra. Either grid or contour."""
         return self._form
 
     @form_.setter
-    def form_(self, f: Optional[str]):
+    def form_(self, f: str | None):
         if f not in [None, "grid", "contour"]:
             raise AttributeError("'form' must be [None, grid, contour]")
         self._form = f
@@ -149,9 +149,10 @@ class Terrain:
 
     def generate(
         self,
-        f: Optional[
+        f: (
             Callable[[NDArray[np.float64], NDArray[np.float64]], NDArray[np.float64]]
-        ] = None,
+            | None
+        ) = None,
     ):
         """
         Generates the terra using a function.
@@ -168,6 +169,7 @@ class Terrain:
         """
         if self.form_ is None:
             self._Z = np.zeros(self._m_size())
+            return self
         if f is None:
             dx, dy = self._m_size()
             self._Z = minmax(create_perlin_map(dx, dy, scale=dx // 3))
@@ -177,7 +179,7 @@ class Terrain:
             raise TypeError(f"'f' must be a function or None, not {f}")
         return self
 
-    def plot(self, ax: Optional[plt.Axes] = None, **kwargs):
+    def plot(self, ax: plt.Axes | None = None, **kwargs):
         """Plots the terra as a contour to visualize."""
         # given an axes, plot the terra using the parameters given.
         if self.Z_ is None:

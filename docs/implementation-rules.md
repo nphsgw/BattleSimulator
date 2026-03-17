@@ -10,6 +10,13 @@
 - 既存 API を壊す変更は慎重に扱う
 - 実験的な仕様は、将来切り替えやすい形で追加する
 
+## Current Extension Points
+- 戦闘本体の拡張は `battlesim/_battle.py` を入口にする
+- ターゲティングの拡張は `battlesim/simulation/_target.py` に追加する
+- AI 行動の拡張は `battlesim/simulation/_ai.py` に追加する
+- 地形ルールの拡張は `battlesim/terra/_terrain.py` と `battlesim/terra/_noise.py` に追加する
+- 可視化の拡張は `battlesim/plot/` 配下で行い、戦闘ロジックには直接混ぜない
+
 ## Testing Rules
 - ロジック変更時は `tests/` に対応するテストを追加または更新する
 - バグ修正時は、再発防止テストを優先する

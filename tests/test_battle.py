@@ -75,4 +75,9 @@ def test_simulate(battle: bsm.Battle):
     F = battle.simulate()
     # check presense of b.sim_
     assert battle.sim_ is not None, "simulation object should be present and isnt"
-    assert type(F) is np.ndarray, "must be of type np.ndarray for F"
+    assert isinstance(F, np.ndarray), "must be of type np.ndarray for F"
+
+
+def test_battle_requires_army_before_accessing_composition(battle: bsm.Battle):
+    with pytest.raises(AttributeError):
+        _ = battle.composition_

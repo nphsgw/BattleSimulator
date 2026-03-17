@@ -6,7 +6,7 @@ Created on Tue Oct  8 11:12:15 2019
 @author: gparkes
 """
 
-from numba import jit
+from numba import njit
 
 """
 Includes a bonus damage when attacking downhill.
@@ -17,13 +17,13 @@ Total Damage (without armor) = Base Damage * ((terra[i] - terra[j]) / 2) + 1
 """
 
 
-@jit
+@njit
 def bonus_terrain_damage(z_i: float, z_j: float) -> float:
     """Calculates the bonus terra damage done."""
     return ((z_i - z_j) / 2.0) + 1.0
 
 
-@jit
+@njit
 def basic(M, z_i: float, z_j: float, i: int) -> None:
     """Determines basic damage output to target i."""
     # cache base damage and target.

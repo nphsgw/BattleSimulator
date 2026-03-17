@@ -59,6 +59,12 @@ def test_generate():
     T = bsm.Terrain()
     # good
     T.generate()
+    assert T.Z_ is not None
+
+    flat = bsm.Terrain(form=None)
+    flat.generate()
+    assert flat.Z_ is not None
+    assert (flat.Z_ == 0).all(), "form=None should produce a flat terrain"
 
     with pytest.raises(TypeError):
         T.generate(cast(Any, "hello"))

@@ -32,21 +32,19 @@ passed to the functions.
 
 """
 
-from typing import List, Optional
-
 import numpy as np
-from numba import jit
+from numba import njit
 from numpy.typing import NDArray
 
 from battlesim import _mathutils
 
 
-def get_function_names() -> List[str]:
+def get_function_names() -> list[str]:
     """Returns the function names."""
     return ["random", "nearest", "close_weak"]
 
 
-def get_global_function_names() -> List[str]:
+def get_global_function_names() -> list[str]:
     """Gets global function names."""
     return ["global_" + n for n in get_function_names()]
 
@@ -57,8 +55,8 @@ __all__ = get_function_names() + get_global_function_names()
 ############## AI FUNCTIONS ##############################
 
 
-@jit
-def random(M, enemies: NDArray[np.uint], i: Optional[int] = None) -> int:
+@njit
+def random(M, enemies: NDArray[np.uint], i: int | None = None) -> int:
     """
     Given enemy candidates who are alive, draw an index of one at random.
     """
@@ -69,7 +67,7 @@ def random(M, enemies: NDArray[np.uint], i: Optional[int] = None) -> int:
         return -1
 
 
-@jit
+@njit
 def nearest(M, enemies: NDArray[np.uint], i: int) -> int:
     """
     Given enemy candidates who are alive, determine which one is nearest.
@@ -82,7 +80,7 @@ def nearest(M, enemies: NDArray[np.uint], i: int) -> int:
         return -1
 
 
-@jit
+@njit
 def close_weak(M, enemies: NDArray[np.uint], i: int, wtc_ratio: float = 0.7) -> int:
     """
     Given enemy alive candidates, globally determine which one is the weakest
@@ -139,7 +137,7 @@ all units need a new target.
 """
 
 
-@jit
+@njit
 def global_random(M, group_i: int):
     """Computes a random target for every unit within the M matrix."""
     # define
@@ -151,7 +149,7 @@ def global_random(M, group_i: int):
     return np.random.choice(id_not, sel.sum())
 
 
-@jit
+@njit
 def global_nearest(M, group_i: int):
     """Computes the nearest target for every unit within the M matrix."""
     # define
@@ -170,10 +168,10 @@ def global_nearest(M, group_i: int):
     (id_is,) = np.where(selector)
     # use distance matrix and ids to select sub groups to find argmin
     j = _mathutils.matrix_argmin(dist_matrix_sq[id_is, :][:, id_not])
-    return j
+    return id_not[j]
 
 
-@jit
+@njit
 def global_close_weak(M, group_i: int, wtc_ratio=0.7):
     """Computes the nearest weakest target for every unit within the M matrix."""
     # define
@@ -196,4 +194,4 @@ def global_close_weak(M, group_i: int, wtc_ratio=0.7):
     (id_is,) = np.where(selector)
     # use distance matrix and ids to select sub groups to find argmin
     j = _mathutils.matrix_argmin(dist_adj[id_is, :][:, id_not] + hp_adj[id_not])
-    return j
+    return id_not[j]

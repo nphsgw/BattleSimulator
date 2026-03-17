@@ -6,7 +6,7 @@ Responsible for creating a Battle object.
 
 import itertools as it
 import warnings
-from typing import Callable, Dict, List, Optional, Tuple, Union
+from collections.abc import Callable
 
 import numpy as np
 import pandas as pd
@@ -22,7 +22,7 @@ from .simulation import _ai as AI
 from .simulation import _target
 from .simulation import simulate_battle as sim_battle
 
-TUPLE4 = Tuple[float, float, float, float]
+TUPLE4 = tuple[float, float, float, float]
 
 
 class Battle:
@@ -37,7 +37,7 @@ class Battle:
 
     def __init__(
         self,
-        db: Union[str, Dict, pd.DataFrame] = default_db(),
+        db: str | dict | pd.DataFrame = default_db(),
         bounds: TUPLE4 = (0.0, 10.0, 0.0, 10.0),
         use_tqdm: bool = True,
     ):
@@ -67,7 +67,7 @@ class Battle:
         # initialise a terra
         self._T = Terrain(bounds, res=0.1, form=None)
         # design a list of composites
-        self._comps = []
+        self._comps: list[Composite] | None = None
         self._decision_map = {"aggressive": 0, "hit_and_run": 1}
 
     @staticmethod
@@ -104,7 +104,7 @@ class Battle:
             return range(k)
 
     def _is_instantiated(self):
-        if self._comps is None:
+        if not self._comps:
             raise AttributeError(
                 "'create_army' has not been called - there are no units."
             )
@@ -155,6 +155,7 @@ class Battle:
         self._M = Battle._generate_M(sum(self._unit_n))
         matrix = self._M
         assert matrix is not None
+        assert self._comps is not None
         # check that groups exist in army_set
         _seg_start, _seg_end = self._segments
         decision_ai_map = dict(zip(AI.get_function_names(), it.count()))
@@ -188,9 +189,10 @@ class Battle:
             matrix["target"][start:end] = _target.global_nearest(matrix, group)
 
     @property
-    def composition_(self) -> List[Composite]:
+    def composition_(self) -> list[Composite]:
         """Determines the composition of the Battle."""
         self._is_instantiated()
+        assert self._comps is not None
         return self._comps
 
     @property
@@ -239,7 +241,7 @@ class Battle:
         return self._db
 
     @db_.setter
-    def db_(self, db_n: Union[str, Dict, pd.DataFrame]):
+    def db_(self, db_n: str | dict | pd.DataFrame):
         if isinstance(db_n, str):
             self._db = _utils.import_and_check_unit_file(db_n)
         elif isinstance(db_n, dict):
@@ -297,7 +299,7 @@ class Battle:
             [self.db_.loc[u, "allegiance_int"] for u in self._unit_roster]
         )
 
-    def create_army(self, army_set: List[Composite]):
+    def create_army(self, army_set: list[Composite]):
         """
         Armies are groupings of (<'Unit Type'>, <number of units>). You can
         create one or more of these.
@@ -327,7 +329,7 @@ class Battle:
         self._unit_n = [u.n for u in army_set]
         return self
 
-    def apply_terrain(self, t: Optional[str] = None, res: float = 0.1):
+    def apply_terrain(self, t: str | None = None, res: float = 0.1):
         """
         Applies a Z-plane to the map that the Battle is occuring on by creating
         a bsm.Terrain object.

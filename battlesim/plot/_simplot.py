@@ -7,8 +7,8 @@ Created on Fri Feb 22 14:30:45 2019
 """
 
 import itertools as it
+from collections.abc import Mapping
 from functools import reduce
-from typing import Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -24,9 +24,9 @@ __all__ = ["quiver_fight"]
 
 def quiver_fight(
     frames: np.ndarray,
-    terrain: Optional[Terrain] = None,
-    allegiance_label={},
-    allegiance_color={},
+    terrain: Terrain | None = None,
+    allegiance_label: Mapping[object, str] | None = None,
+    allegiance_color: Mapping[object, str] | None = None,
 ):
     """
     Generates an animated quiver plot with units moving around the arena
@@ -78,14 +78,14 @@ def quiver_fight(
     n_allegiances = allegiances.shape[0]
 
     # create defaults if the dictionary size does not match the allegiance flags
-    if len(allegiance_label) != n_allegiances:
+    if allegiance_label is None or len(allegiance_label) != n_allegiances:
         allegiance_label = dict(
             zip(
                 allegiances.tolist(),
                 ["team%d" % i for i in it.islice(it.count(1), 0, n_allegiances)],
             )
         )
-    if len(allegiance_color) != n_allegiances:
+    if allegiance_color is None or len(allegiance_color) != n_allegiances:
         allegiance_color = dict(
             zip(
                 allegiances.tolist(),
