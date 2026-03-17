@@ -67,9 +67,9 @@ class Terrain:
         dtype : str
             Defines which function to use to generate noise map. Only `perlin` is currently implemented.
         """
-        self._form = form
         self.bounds_ = dim
         self.res_ = res
+        self.form_ = form
         self._Z = None
         self.dtype = dtype
 
@@ -116,7 +116,7 @@ class Terrain:
         self._res = r
 
     @property
-    def Z_(self) -> NDArray[np.float_]:
+    def Z_(self) -> NDArray[np.float64]:
         """The array defining height."""
         return self._Z
 
@@ -129,7 +129,7 @@ class Terrain:
             self.Z_ is not None, self.dtype, self.bounds_, self.res_
         )
 
-    def get_grid(self) -> NDArray[np.float_]:
+    def get_grid(self) -> NDArray[np.float64]:
         """Returns the grid as an mgrid.
 
         Returns
@@ -146,7 +146,7 @@ class Terrain:
     def generate(
         self,
         f: Optional[
-            Callable[[NDArray[np.float_], NDArray[np.float_]], NDArray[np.float_]]
+            Callable[[NDArray[np.float64], NDArray[np.float64]], NDArray[np.float64]]
         ] = None,
     ):
         """

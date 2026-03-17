@@ -40,9 +40,9 @@ Here are just a few things that ``battlesim`` aims to do well:
 Installation
 ------------
 
-``battlesim`` requires the following `dependencies <environment.yml>`__:
+``battlesim`` requires:
 
-- python (>= 3.8)
+- python (>= 3.12)
 - numpy (>= 1.11.0)
 - pandas (>= 0.25.1)
 - matplotlib (>= 3.1.1)
@@ -57,19 +57,6 @@ If you are unfamiliar with the Jupyter project see `here <https://jupyter.org/>`
 
 - jupyter (1.0.0)
 
-From PyPI (Legacy)
-~~~~~~~~~
-
-If you have working versions of the dependencies, similarly install
-using `pip <https://pypi.org/project/battlesim/>`__ (version 0.3.7)::
-
-    pip install battlesim
-
-We recommend updating the dependencies yourself using conda 
-rather than through pip because conda manages the dependencies
-better, but pip will do it for you. See the ``environment.yml`` 
-file for dependencies.
-
 From Cloning the GitHub Repository
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -77,31 +64,33 @@ Alternatively if you are cloning this
 `GitHub repository <https://github.com/gregparkes/BattleSimulator>`__, use::
 
     git clone https://github.com/gregparkes/BattleSimulator
-    conda env create -f environment.yml
-    conda activate bsm
+    cd BattleSimulator
+    uv python install 3.12
+    uv sync --extra all --extra notebook
 
-Now within the ``bsm`` environment run your Jupyter notebook::
+If you want to run the package commands without manually activating a virtual
+environment, use ``uv run``::
 
+    uv run python
+    uv run jupyter notebook
+
+If you prefer activating the generated virtual environment directly::
+
+    source .venv/bin/activate
     jupyter notebook
 
 Running Tests
 ~~~~~~~~~~~~~
 
-You will need the following for testing (soft requirement):
+Testing dependencies are available through the ``all`` extra. Then perform::
 
-- PyTest (5.1.2)
-
-Then perform the following within a console::
-
-    cd tests/
-    pytest -v
+    uv run pytest -v
 
 How to use: The Basics
 ----------------------
 
-Firstly, check the requirements for using this simulator, of which most come
-with the `Anaconda distribution <https://www.anaconda.com/>`__.
-In addition you will need the **ffmpeg** video conversion package to generate
+Firstly, ensure your ``uv`` environment has been synced. In addition you will
+need the **ffmpeg** video conversion package to generate
 the simulations as animations.
 
 Secondly, you will need to import the package as:

@@ -19,7 +19,7 @@ setup(
     license="GPL-3.0",
     packages=find_packages(exclude=["tests", ".gitignore"]),
     zip_safe=False,
-    python_requires=">=3.8",
+    python_requires=">=3.12",
     install_requires=[
         "numpy>=1.11.0",
         "pandas>=0.25.1",
@@ -28,7 +28,7 @@ setup(
     ],
     classifiers=[
         "Natural Language :: English",
-        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.12",
         "Intended Audience :: Science/Research",
         "Intended Audience :: Developers",
         "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",

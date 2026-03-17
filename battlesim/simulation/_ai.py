@@ -51,14 +51,14 @@ def _select_enemy(M, enemies: NDArray[np.uint], i: int) -> bool:
 @jit
 def aggressive(
     M,
-    luck: NDArray[np.float_],
-    dists: NDArray[np.float_],
-    delta_x: NDArray[np.float_],
-    delta_y: NDArray[np.float_],
-    xtile: NDArray[np.float_],
-    ytile: NDArray[np.float_],
+    luck: NDArray[np.float64],
+    dists: NDArray[np.float64],
+    delta_x: NDArray[np.float64],
+    delta_y: NDArray[np.float64],
+    xtile: NDArray[np.float64],
+    ytile: NDArray[np.float64],
     enemies: NDArray[np.uint],
-    terrain_height: NDArray[np.float_],
+    terrain_height: NDArray[np.float64],
     i: int,
 ) -> bool:
     """
@@ -92,14 +92,14 @@ def aggressive(
 @jit
 def hit_and_run(
     M,
-    luck: NDArray[np.float_],
-    dists: NDArray[np.float_],
-    delta_x: NDArray[np.float_],
-    delta_y: NDArray[np.float_],
-    xtile: NDArray[np.float_],
-    ytile: NDArray[np.float_],
+    luck: NDArray[np.float64],
+    dists: NDArray[np.float64],
+    delta_x: NDArray[np.float64],
+    delta_y: NDArray[np.float64],
+    xtile: NDArray[np.float64],
+    ytile: NDArray[np.float64],
     enemies: NDArray[np.uint],
-    terrain_height: NDArray[np.float_],
+    terrain_height: NDArray[np.float64],
     i: int,
 ) -> bool:
     """

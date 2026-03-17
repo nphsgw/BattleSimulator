@@ -28,10 +28,10 @@ Parameters
 @jit
 def to_enemy(
     M,
-    delta_x: NDArray[np.float_],
-    delta_y: NDArray[np.float_],
-    dist: NDArray[np.float_],
-    z_i: NDArray[np.float_],
+    delta_x: NDArray[np.float64],
+    delta_y: NDArray[np.float64],
+    dist: NDArray[np.float64],
+    z_i: NDArray[np.float64],
     i: int,
 ) -> None:
     """
@@ -54,10 +54,10 @@ def to_enemy(
 @jit
 def from_enemy(
     M,
-    delta_x: NDArray[np.float_],
-    delta_y: NDArray[np.float_],
-    dist: NDArray[np.float_],
-    z_i: NDArray[np.float_],
+    delta_x: NDArray[np.float64],
+    delta_y: NDArray[np.float64],
+    dist: NDArray[np.float64],
+    z_i: NDArray[np.float64],
     i: int,
 ) -> None:
     """

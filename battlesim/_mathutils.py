@@ -11,8 +11,8 @@ def boundary_check(
     bxmax: float,
     bymin: float,
     bymax: float,
-    x_pos: NDArray[np.float_],
-    y_pos: NDArray[np.float_],
+    x_pos: NDArray[np.float64],
+    y_pos: NDArray[np.float64],
 ) -> None:
     """performs boundary checks on our locations movement inplace"""
     x_pos[x_pos < bxmin] = bxmin
@@ -32,8 +32,8 @@ def boundary_check2(bounds, X, Y):
 
 @jit
 def euclidean_distance(
-    delta_x: NDArray[np.float_], delta_y: NDArray[np.float_]
-) -> NDArray[np.float_]:
+    delta_x: NDArray[np.float64], delta_y: NDArray[np.float64]
+) -> NDArray[np.float64]:
     """Given dX, dY vectors, compute distances D vector from M[x] and M[y]"""
     distance = np.empty_like(delta_x, dtype=np.float64)
     size = distance.shape[0]
@@ -44,8 +44,8 @@ def euclidean_distance(
 
 @jit
 def sq_euclidean_distance(
-    delta_x: NDArray[np.float_], delta_y: NDArray[np.float_]
-) -> NDArray[np.float_]:
+    delta_x: NDArray[np.float64], delta_y: NDArray[np.float64]
+) -> NDArray[np.float64]:
     """squared euclidean distance, cheaper."""
     distance = np.empty_like(delta_x)
     size = distance.shape[0]
@@ -56,11 +56,11 @@ def sq_euclidean_distance(
 
 @jit
 def sq_euclidean_distance2(
-    x_pos: NDArray[np.float_],
-    y_pos: NDArray[np.float_],
+    x_pos: NDArray[np.float64],
+    y_pos: NDArray[np.float64],
     i: int,
     e_indices: NDArray[np.uint],
-) -> NDArray[np.float_]:
+) -> NDArray[np.float64]:
     """squared euclidean distance between X[i] and Y[i] and X[indices]/Y[indices]"""
     return sq_euclidean_distance(
         x_pos[i] - x_pos[e_indices], y_pos[i] - y_pos[e_indices]
@@ -69,8 +69,8 @@ def sq_euclidean_distance2(
 
 @jit
 def sq_distance_matrix(
-    x_pos: NDArray[np.float_], y_pos: NDArray[np.float_]
-) -> NDArray[np.float_]:
+    x_pos: NDArray[np.float64], y_pos: NDArray[np.float64]
+) -> NDArray[np.float64]:
     """Where X, Y are vectors of (n,) length."""
     distance = np.zeros((x_pos.shape[0], y_pos.shape[0]), dtype=np.float64)
     # inplace op
@@ -85,7 +85,7 @@ def sq_distance_matrix(
 
 
 @jit
-def matrix_argmin(x_pos: NDArray[np.float_]) -> NDArray[np.int64]:
+def matrix_argmin(x_pos: NDArray[np.float64]) -> NDArray[np.int64]:
     """Calculates argmin along axis=1 dim."""
     mins = np.empty(x_pos.shape[0], dtype=np.int64)
     for i in range(x_pos.shape[0]):
@@ -94,13 +94,13 @@ def matrix_argmin(x_pos: NDArray[np.float_]) -> NDArray[np.int64]:
 
 
 @jit
-def minmax(mat: NDArray[np.float_]) -> NDArray[np.float_]:
+def minmax(mat: NDArray[np.float64]) -> NDArray[np.float64]:
     """Scales X into the [0, 1] range."""
     xm = np.min(mat)
     return (mat - xm) / (np.max(mat) - xm)
 
 
 @jit
-def no_mean(mat: NDArray[np.float_]) -> NDArray[np.float_]:
+def no_mean(mat: NDArray[np.float64]) -> NDArray[np.float64]:
     """Remove the mean from every value in X."""
     return mat - np.mean(mat)

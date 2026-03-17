@@ -14,7 +14,7 @@ from numba import jit
 
 @jit
 def basic_chance(
-    M, dist: NDArray[np.float_], i: int, global_penalty: float = 15.0
+    M, dist: NDArray[np.float64], i: int, global_penalty: float = 15.0
 ) -> float:
     """
     Hit chance in the range [0..1]
