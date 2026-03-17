@@ -140,5 +140,7 @@ def is_tqdm_installed(raise_error: bool = False) -> bool:
         is_installed = False
     # Raise error (if needed) :
     if raise_error and not is_installed:  # pragma: no cover
-        raise ModuleNotFoundError("tqdm not installed. Use `pip install tqdm`.")
+        raise ModuleNotFoundError(
+            "tqdm not installed. Sync the project with `uv sync --extra all`."
+        )
     return is_installed

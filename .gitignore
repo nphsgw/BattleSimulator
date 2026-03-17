@@ -6,10 +6,12 @@ cover/
 build
 dist/
 tags
+.venv/
 
 *.pyc
 *.png
 /*.egg-info
+*.egg-info/
 *.so
 *.pyd
 *.c
@@ -37,5 +39,6 @@ tags
 .pytest_cache/
 .ruff_cache
 .cache/
+__pycache__/
 
 Experimental.ipynb

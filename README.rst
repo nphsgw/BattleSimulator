@@ -82,9 +82,17 @@ If you prefer activating the generated virtual environment directly::
 Running Tests
 ~~~~~~~~~~~~~
 
-Testing dependencies are available through the ``all`` extra. Then perform::
+Testing and formatting dependencies are available through the ``all`` extra.
+Then perform::
 
     uv run pytest -v
+
+Formatting
+~~~~~~~~~~
+
+To format and lint the project, use::
+
+    make format
 
 How to use: The Basics
 ----------------------

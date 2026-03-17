@@ -1,22 +1,23 @@
 [build-system]
-requires = ["setuptools>=61.0"]
+requires = ["setuptools>=82.0.1"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "battlesim"
+version = "0.3.7"
 description = "Modelling and animating simulated battles between units in Python."
-dynamic = ["version"]
 requires-python = ">=3.12"
 authors = [
     {name = "Greg Parkes"}
 ]
 readme = {file = "README.rst", content-type = "text/x-rst"}
-license = { file = "LICENSE.txt" }
+license = "GPL-3.0-only"
+license-files = ["LICENSE.txt"]
 dependencies = [
-    "numpy>=1.11.0",
-    "pandas>=0.25.1",
-    "matplotlib>=3.1.1",
-    "numba>=0.45"
+    "numpy>=2.4.3",
+    "pandas>=3.0.1",
+    "matplotlib>=3.10.8",
+    "numba>=0.64.0",
 ]
 keywords = ["simulation", "battle", "tabs"]
 classifiers=[
@@ -24,7 +25,6 @@ classifiers=[
     "Programming Language :: Python :: 3.12",
     "Intended Audience :: Science/Research",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     "Framework :: IPython",
     "Framework :: Jupyter",
     "Development Status :: 3 - Alpha",
@@ -33,15 +33,23 @@ classifiers=[
 ]
 
 [project.optional-dependencies]
-all = ["tqdm", "pytest"]
-notebook = ["jupyter>=1.0"]
+all = [
+    "tqdm>=4.67.3",
+    "pytest>=9.0.2",
+    "black>=26.3.1",
+    "ruff>=0.15.6",
+]
+notebook = ["jupyter>=1.1.1"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.setuptools.packages.find]
+include = ["battlesim*"]
 
 [project.urls]
 Homepage = "https://github.com/gregparkes/BattleSimulator"
 Changelog = "https://github.com/gregparkes/BattleSimulator/blob/master/CHANGELOG.md"
-
-#[tool.pytest.ini_options]
-#addopts = "--cov --cov-report html cov-report term-missing"
 
 [tool.pylint]
 max-line-length = 120
