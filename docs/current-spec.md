@@ -380,7 +380,7 @@ NumPy の乱数分布をラップするクラス。
 
 ### Jupyter Animation
 `sim_jupyter()` は `quiver_fight()` を使ったアニメーションオブジェクトを返す。
-`create_html=True` の場合は `to_jshtml()` の結果を返す。
+`create_html=True` の場合は `to_html5_video()` の結果を返す。
 
 可視化関数は `func=` で差し替えできる。
 現時点で確認済みの代表例:

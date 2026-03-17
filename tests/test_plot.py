@@ -56,6 +56,14 @@ def test_sim_jupyter_accepts_debug_plotter():
     assert isinstance(anim, FuncAnimation)
 
 
+def test_sim_jupyter_create_html_returns_html5_video():
+    battle = _build_small_battle()
+
+    html = battle.sim_jupyter(func=bsm.quiver_fight_debug, create_html=True)
+
+    assert "<video" in html
+
+
 def test_sim_export_accepts_debug_plotter():
     battle = _build_small_battle()
 

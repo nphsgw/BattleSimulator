@@ -225,6 +225,9 @@ text overlay:
 
 The same plotter can also be used with ``sim_export()``.
 
+When using ``sim_jupyter(..., create_html=True)``, the current implementation
+returns an HTML5 video snippet for notebook display.
+
 One step further: Repeated runs
 -------------------------------
 
