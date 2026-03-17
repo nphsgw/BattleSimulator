@@ -2,6 +2,7 @@
 
 ## Purpose
 このファイルは、戦闘シミュレーションの独自仕様を定義する正本とする。
+現行実装の詳細仕様は `docs/current-spec.md` を参照する。
 
 ## Current Rule Baseline
 - 初期状態では既存 BattleSimulator の挙動を基準とする
