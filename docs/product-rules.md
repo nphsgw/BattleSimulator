@@ -13,6 +13,8 @@
 - データセットの差し替えや追加
 - 可視化やアニメーションの調整
 
+可視化方針の詳細は `docs/visualization-rules.md` を参照する。
+
 ## Near-Term Product Direction
 - まずは既存 BattleSimulator の挙動を理解しやすく保ったまま、小さな独自仕様を積み上げる
 - 独自仕様は「戦闘ロジック」「地形」「AI」「可視化」を分けて追加する

@@ -20,7 +20,7 @@ __all__ = ["simulate_battle"]
 
 
 @njit
-def _copy_frame(Frames, M, dx, dy, dist, i):
+def _copy_frame(Frames, M, dx, dy, dist, z_i, z_j, effective_range, move_factor, i):
     # copy over data from M into frames.
     Frames["x"][i] = M["x"]
     Frames["y"][i] = M["y"]
@@ -33,7 +33,38 @@ def _copy_frame(Frames, M, dx, dy, dist, i):
     Frames["ddy"][i] = dy / (dist + 1e-12)
     Frames["team"][i] = M["team"]
     Frames["utype"][i] = M["utype"]
+    Frames["z"][i] = z_i
+    Frames["target_z"][i] = z_j
+    Frames["move_factor"][i] = move_factor
+    Frames["effective_range"][i] = effective_range
+    Frames["damage_factor"][i] = ((z_i - z_j) / 2.0) + 1.0
     return
+
+
+@njit
+def _terrain_debug_values(M, Z, xtile, ytile):
+    n_units = M.shape[0]
+    z_i = np.empty(n_units, dtype=np.float32)
+    z_j = np.empty(n_units, dtype=np.float32)
+    move_factor = np.empty(n_units, dtype=np.float32)
+    effective_range = np.empty(n_units, dtype=np.float32)
+
+    max_x = Z.shape[0] - 1
+    max_y = Z.shape[1] - 1
+
+    for unit_i in range(n_units):
+        x_i = min(max(int(xtile[unit_i]), 0), max_x)
+        y_i = min(max(int(ytile[unit_i]), 0), max_y)
+        target_i = M["target"][unit_i]
+        x_j = min(max(int(xtile[target_i]), 0), max_x)
+        y_j = min(max(int(ytile[target_i]), 0), max_y)
+
+        z_i[unit_i] = Z[x_i, y_i]
+        z_j[unit_i] = Z[x_j, y_j]
+        move_factor[unit_i] = 1.0 - (z_i[unit_i] / 2.0)
+        effective_range[unit_i] = M["range"][unit_i] * (((z_i[unit_i] ** 2) / 3.0) + 1.0)
+
+    return z_i, z_j, move_factor, effective_range
 
 
 @njit
@@ -86,7 +117,10 @@ def _step_through_update(M, Z, max_step, teams, enemy_targets, bounds, frames):
             enemy_targets[g] = np.where((M["hp"] > 0.0) & (M["team"] != teams[g]))[0]
 
         """# copy a frame"""
-        _copy_frame(frames, M, dx, dy, dists, t)
+        z_i, z_j, move_factor, effective_range = _terrain_debug_values(M, Z, xtile, ytile)
+        _copy_frame(
+            frames, M, dx, dy, dists, z_i, z_j, effective_range, move_factor, t
+        )
 
         """# iterate over units and call AI function."""
         running = _loop_units(
@@ -185,6 +219,11 @@ def simulate_battle(M, terrain, max_step: int = 100, ret_frames: bool = True):
                     ("ddy", "f4"),
                     ("team", "u1"),
                     ("utype", "u1"),
+                    ("z", "f4"),
+                    ("target_z", "f4"),
+                    ("move_factor", "f4"),
+                    ("effective_range", "f4"),
+                    ("damage_factor", "f4"),
                 ],
                 align=True,
             ),

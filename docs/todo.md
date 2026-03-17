@@ -14,6 +14,39 @@
 - 独自ユニットや独自 AI の追加を検討する
 - 可視化やアニメーションの調整を検討する
 
+### Visualization / Animation Plan
+- [x] 可視化の目的と非目的を `docs/` に整理する
+- [x] 通常表示とデバッグ表示の役割を分ける
+- [x] ユニットごとに表示したい情報を確定する
+  例: HP, target, team, alive/dead, unit type
+- [x] 地形の影響として表示したい値を確定する
+  例: 地形高さ, 移動補正, 実効射程, 高低差ダメージ補正
+
+### Phase 3A: Minimal Overlay
+- [x] 現行の `quiver_fight()` を基準に、拡張方針を決める
+- [x] target line を表示する描画方法を設計する
+- [x] HP を見やすく表示する方法を決める
+  例: バー表示, 色段階, 数値ラベル
+- [x] 情報過多を避けるため、表示の on/off 方針を決める
+- [x] 最小構成の可視化を新規描画関数として実装する
+  例: `quiver_fight_debug()`
+- [x] `sim_jupyter()` と `sim_export()` から切り替えて使えるようにする
+
+### Phase 3B: Terrain Influence Overlay
+- [x] 描画に必要な地形由来データを frame に保存する方針を決める
+- [x] simulation 側で各 frame に地形由来の補助情報を保持できるようにする
+  例: `z`, `move_factor`, `effective_range`
+- [x] ユニット足元の地形高さを可視化する方法を決める
+- [x] 移動補正と射程補正を可視化する方法を決める
+- [x] 攻撃時の高低差ダメージ補正を可視化する方法を決める
+- [x] 背景地形とユニット overlay が干渉しすぎないように調整する
+
+### Phase 3C: Validation
+- [x] 可視化用の最小回帰テストを追加する
+- [x] 代表的な battle 条件で `sim_jupyter()` を確認する
+- [x] 代表的な battle 条件で `sim_export()` を確認する
+- [x] `docs/current-spec.md` に可視化仕様を追記する
+
 ## Review Follow-Ups
 
 ### High Priority

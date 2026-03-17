@@ -361,6 +361,11 @@ NumPy の乱数分布をラップするクラス。
 - `ddy`
 - `team`
 - `utype`
+- `z`
+- `target_z`
+- `move_factor`
+- `effective_range`
+- `damage_factor`
 
 ### `simulate_k()`
 戻り値は `pandas.DataFrame`。
@@ -377,15 +382,47 @@ NumPy の乱数分布をラップするクラス。
 `sim_jupyter()` は `quiver_fight()` を使ったアニメーションオブジェクトを返す。
 `create_html=True` の場合は `to_jshtml()` の結果を返す。
 
+可視化関数は `func=` で差し替えできる。
+現時点で確認済みの代表例:
+- `func=quiver_fight_debug`
+- `func=partial(quiver_fight_debug, show_terrain_text=True)`
+
 ### GIF Export
 `sim_export()` は `.gif` 拡張子を補完し、Matplotlib animation の `save()` を使って出力する。
 既定 writer は `pillow`。
+
+`sim_export()` も `func=` で debug view を受け取れる。
 
 ### Visual Representation
 `quiver_fight()` では:
 - 生存ユニットは矢印
 - 死亡ユニットは `x`
 - 陣営ごとに色分け
+
+`quiver_fight_debug()` では、上記に加えて次を扱う。
+- HP バー
+- target line
+- overlay の on/off 切り替え
+- 地形由来の補助テキスト overlay
+
+主な追加引数:
+- `show_hp`
+- `show_target_lines`
+- `show_terrain_text`
+
+### Planned Visualization Direction
+独自拡張では、通常表示とデバッグ表示を分けて扱う方針を取る。
+
+- 通常表示
+  現行の `quiver_fight()` に近い軽量表示を維持する
+- デバッグ表示
+  HP、target line、地形補助情報を重ねて、個々のユニット挙動を解析しやすくする
+
+デバッグ表示で優先的に扱う候補は次の通り。
+- ユニット単位: HP, target, unit type, alive/dead
+- 地形由来: 地形高さ, 移動補正, 実効射程, 高低差ダメージ補正
+
+詳細方針は `docs/visualization-rules.md` を参照する。
 
 ## Validation And Error Behavior
 

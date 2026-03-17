@@ -202,6 +202,26 @@ move towards each other and kill each other. We have
 extensive `examples <https://github.com/gregparkes/BattleSimulator/tree/master/examples>`__
 to look at within this repository.
 
+For a more analysis-oriented view, you can switch to the debug plotter:
+
+.. code-block:: python
+
+    bat.sim_jupyter(func=bsm.quiver_fight_debug)
+
+This debug view adds HP bars and target lines. If you also want to inspect the
+terrain-derived modifiers recorded in each frame, you can enable the terrain
+text overlay:
+
+.. code-block:: python
+
+    from functools import partial
+
+    bat.sim_jupyter(
+        func=partial(bsm.quiver_fight_debug, show_terrain_text=True)
+    )
+
+The same plotter can also be used with ``sim_export()``.
+
 One step further: Repeated runs
 -------------------------------
 

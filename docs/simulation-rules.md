@@ -16,6 +16,7 @@
 ## Planned Next Rules
 - 独自ユニットを追加するときは、既存ステータス列で表せる範囲から始める
 - 独自 AI を追加するときは、既存 AI と同じ入力契約を維持する
+- 可視化とアニメーションの詳細方針は `docs/visualization-rules.md` に分離して記録する
 
 ## Rules to Record Here
 - ユニットの基本ステータス
