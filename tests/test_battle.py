@@ -5,9 +5,11 @@ Created on Mon Sep 30 11:20:25 2019
 
 @author: gparkes
 """
+
 from pathlib import Path
-import pandas as pd
+
 import numpy as np
+import pandas as pd
 import pytest
 
 # import local package
@@ -26,7 +28,7 @@ def test_battle_attributes(battle: bsm.Battle):
     """Tests basic attributes."""
     # battle object requires input file
     assert battle.M_ is None, "M_ should not be set"
-    assert type(battle.db_) == pd.DataFrame, "db_ must be a pandas.dataframe"
+    assert isinstance(battle.db_, pd.DataFrame), "db_ must be a pandas.dataframe"
     assert battle.sim_ is None, "sim_ not set yet"
 
 

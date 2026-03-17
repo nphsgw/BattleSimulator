@@ -5,12 +5,13 @@ Created on Tue Oct  8 11:07:18 2019
 
 @author: gparkes
 """
+
 import math
 from typing import List
-import numpy as np
-from numpy.typing import NDArray
 
+import numpy as np
 from numba import jit
+from numpy.typing import NDArray
 
 from . import _damage, _hit, _move
 from ._target import nearest

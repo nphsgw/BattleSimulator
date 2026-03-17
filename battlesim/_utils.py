@@ -5,11 +5,13 @@ Created on Fri Feb 22 14:27:46 2019
 
 @author: gparkes
 """
-from typing import Iterable, Union, Any, List
-import itertools as it
+
 import importlib
+import itertools as it
 import os
 from pathlib import Path
+from typing import Any, Iterable, List, Union
+
 import pandas as pd
 
 

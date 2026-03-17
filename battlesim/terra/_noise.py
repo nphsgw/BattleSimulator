@@ -38,10 +38,11 @@ def smooth_noise(
 def turbulence(noise, x: int, y: int, size: int, dim_x: int, dim_y: int) -> float:
     """Adds turbulence at point [x, y]"""
     val = 0.0
-    init_size = size
-    while size >= 1:
-        val += smooth_noise(noise, x / size, y / size, dim_x, dim_y) * size
-        size /= 2.0
+    init_size = float(size)
+    size_f = float(size)
+    while size_f >= 1:
+        val += smooth_noise(noise, x / size_f, y / size_f, dim_x, dim_y) * size_f
+        size_f /= 2.0
     return 128 * val / init_size
 
 

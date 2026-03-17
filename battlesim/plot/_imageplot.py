@@ -5,6 +5,7 @@ Created on Mon Feb 25 13:38:51 2019
 
 @author: gparkes
 """
+
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -64,8 +65,8 @@ def accuracy_contour(M, index, acc_penalty=15.0, boxlim=15):
     Given a selected unit, with it's position, simulate accuracy/miss distances
     to draw accuracy contours.
     """
-    xlim = np.asarray([M["x"][index] - boxlim, M["x"][index] + boxlim])
-    ylim = np.asarray([M["y"][index] - boxlim, M["y"][index] + boxlim])
+    xlim = (M["x"][index] - boxlim, M["x"][index] + boxlim)
+    ylim = (M["y"][index] - boxlim, M["y"][index] + boxlim)
 
     xgrid = np.linspace(xlim[0], xlim[1], 100)
     ygrid = np.linspace(ylim[0], ylim[1], 100)

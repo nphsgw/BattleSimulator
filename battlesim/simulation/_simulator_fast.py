@@ -7,6 +7,7 @@ Created on Tue Feb 19 15:48:25 2019
 
 This class handles the primary simulator functions given some data.
 """
+
 import numpy as np
 from numba import jit, typed
 

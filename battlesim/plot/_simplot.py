@@ -5,6 +5,7 @@ Created on Fri Feb 22 14:30:45 2019
 
 @author: gparkes
 """
+
 import itertools as it
 from functools import reduce
 from typing import Optional
@@ -136,7 +137,13 @@ def quiver_fight(
 
     # configure legend, extras.
     # set plot bounds
-    xmin, xmax, ymin, ymax = terrain.bounds_
+    if terrain is not None:
+        xmin, xmax, ymin, ymax = terrain.bounds_
+    else:
+        xmin = frames["x"].min()
+        xmax = frames["x"].max()
+        ymin = frames["y"].min()
+        ymax = frames["y"].max()
     ax.set_xlim(xmin - 0.5, xmax + 0.5)
     ax.set_ylim(ymin - 0.5, ymax + 0.5)
     # design custom legend

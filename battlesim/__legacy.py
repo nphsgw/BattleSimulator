@@ -5,6 +5,7 @@ Created on Fri Oct  4 15:34:25 2019
 
 @author: gparkes
 """
+
 import itertools as it
 import os
 import random
@@ -137,7 +138,6 @@ def basic_simulation3(units, max_step=50):
         for i, u in enumerate(units):
             # if we're alive...
             if u.hp > 0:
-
                 # wait a second. what if our enemy is dead..?
                 if u.target.hp <= 0.0:
                     # find a new random enemy.
@@ -184,7 +184,6 @@ def basic_simulation4(units, max_step=50):
         for i, u in enumerate(units):
             # if we're alive...
             if u.hp > 0:
-
                 # wait a second. what if our enemy is dead..?
                 if u.target.hp <= 0.0:
                     # find a new random enemy.

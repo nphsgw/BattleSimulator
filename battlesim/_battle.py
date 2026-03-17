@@ -15,12 +15,12 @@ from matplotlib import colors
 from battlesim.plot._simplot import quiver_fight
 from battlesim.terra import Terrain
 
+from . import _utils
 from .__defaults import default_db
 from .distrib import Composite
 from .simulation import _ai as AI
 from .simulation import _target
 from .simulation import simulate_battle as sim_battle
-from . import _utils
 
 TUPLE4 = Tuple[float, float, float, float]
 
@@ -126,8 +126,10 @@ class Battle:
         return Q
 
     def _get_bounds_from_M(self) -> TUPLE4:
-        xmin, xmax = self.M_["x"].min(), self.M_["x"].max()
-        ymin, ymax = self.M_["y"].min(), self.M_["y"].max()
+        matrix = self.M_
+        assert matrix is not None
+        xmin, xmax = matrix["x"].min(), matrix["x"].max()
+        ymin, ymax = matrix["y"].min(), matrix["y"].max()
         return np.floor(xmin), np.ceil(xmax), np.floor(ymin), np.ceil(ymax)
 
     def _check_bounds_to_M(self, bounds: TUPLE4) -> None:
@@ -151,6 +153,8 @@ class Battle:
 
     def _presim(self) -> None:
         self._M = Battle._generate_M(sum(self._unit_n))
+        matrix = self._M
+        assert matrix is not None
         # check that groups exist in army_set
         _seg_start, _seg_end = self._segments
         decision_ai_map = dict(zip(AI.get_function_names(), it.count()))
@@ -160,28 +164,28 @@ class Battle:
             zip(self._unit_roster, self._unit_n, _seg_start, _seg_end, self._comps)
         ):
             # set mutable M values in larger matrix.
-            self.M_["hp"][start:end] = self.db_.loc[u, "HP"]
-            self.M_["armor"][start:end] = self.db_.loc[u, "Armor"]
-            self.M_["team"][start:end] = self.db_.loc[u, "allegiance_int"]
-            self.M_["id"][start:end] = group
-            self.M_["utype"][start:end] = np.argwhere(self.db_.index == u).flatten()[0]
-            self.M_["range"][start:end] = self.db_.loc[u, "Range"]
-            self.M_["speed"][start:end] = self.db_.loc[u, "Movement Speed"]
-            self.M_["dodge"][start:end] = self.db_.loc[u, "Miss"] / 100.0
-            self.M_["acc"][start:end] = self.db_.loc[u, "Accuracy"] / 100.0
-            self.M_["dmg"][start:end] = self.db_.loc[u, "Damage"]
+            matrix["hp"][start:end] = self.db_.loc[u, "HP"]
+            matrix["armor"][start:end] = self.db_.loc[u, "Armor"]
+            matrix["team"][start:end] = self.db_.loc[u, "allegiance_int"]
+            matrix["id"][start:end] = group
+            matrix["utype"][start:end] = np.argwhere(self.db_.index == u).flatten()[0]
+            matrix["range"][start:end] = self.db_.loc[u, "Range"]
+            matrix["speed"][start:end] = self.db_.loc[u, "Movement Speed"]
+            matrix["dodge"][start:end] = self.db_.loc[u, "Miss"] / 100.0
+            matrix["acc"][start:end] = self.db_.loc[u, "Accuracy"] / 100.0
+            matrix["dmg"][start:end] = self.db_.loc[u, "Damage"]
             # ai func index (0 = aggressive, 1 = hit_and_run)
-            self.M_["ai_func_index"][start:end] = decision_ai_map[comp.decision_ai]
+            matrix["ai_func_index"][start:end] = decision_ai_map[comp.decision_ai]
             # initialise position
-            self.M_["x"][start:end] = comp.pos.sample(n)
-            self.M_["y"][start:end] = comp.pos.sample(n)
+            matrix["x"][start:end] = comp.pos.sample(n)
+            matrix["y"][start:end] = comp.pos.sample(n)
 
         # modify bounds to reflect new positions.
         self.bounds_ = self._get_bounds_from_M()
         # assign initial AI targets.
         for group, (start, end) in enumerate(zip(_seg_start, _seg_end)):
             # assign targets
-            self.M_["target"][start:end] = _target.global_nearest(self.M_, group)
+            matrix["target"][start:end] = _target.global_nearest(matrix, group)
 
     @property
     def composition_(self) -> List[Composite]:
@@ -220,7 +224,7 @@ class Battle:
             self.T_.bounds_ = b
 
     @property
-    def M_(self) -> np.ndarray:
+    def M_(self) -> np.ndarray | None:
         """The mutable (updatable) matrix information."""
         return self._M
 
@@ -387,10 +391,12 @@ class Battle:
 
         # set up M matrix from composition info
         self._presim()
+        matrix = self.M_
+        assert matrix is not None
         # re-generate terrain.
         self.T_.generate()
         # we cache a copy of the sim as well for convenience
-        self._sim = sim_battle(np.copy(self.M_), self.T_, ret_frames=True)
+        self._sim = sim_battle(np.copy(matrix), self.T_, ret_frames=True)
         return self.sim_
 
     def simulate_k(self, k: int = 10):
@@ -428,12 +434,14 @@ class Battle:
             runs = np.zeros((k, np.unique(self._teams).shape[0]), dtype=np.int64)
             # pre-simulate fields.
             self._presim()
+            matrix = self.M_
+            assert matrix is not None
             # generate new terra
             self.T_.generate()
 
             for i in self._loading_bar(k):
                 # run simulation
-                team_counts = sim_battle(np.copy(self.M_), self.T_, ret_frames=False)
+                team_counts = sim_battle(np.copy(matrix), self.T_, ret_frames=False)
                 runs[i, :] = team_counts
             return pd.DataFrame(runs, columns=self.allegiances_.values)
 
@@ -495,7 +503,7 @@ class Battle:
         self._is_simulated()
         # append to end if not present
         if not filename.endswith(".gif"):
-            filename.append(".gif")
+            filename += ".gif"
 
         # call simulation
         Q = self._plot_simulation(func)

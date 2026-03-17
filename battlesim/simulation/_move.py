@@ -9,9 +9,10 @@ This file is concerned with movement functions associated with each army group.
 
 There is the default 'move' and fancier options such as A*.
 """
+
 import numpy as np
-from numpy.typing import NDArray
 from numba import jit
+from numpy.typing import NDArray
 
 __all__ = ["to_enemy"]
 

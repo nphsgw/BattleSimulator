@@ -8,12 +8,13 @@ Created on Wed Oct  2 16:45:50 2019
 This file determines different background 'terrains' to have for any given map.
 This can be fixed size or infinite if it follows some mathematical function.
 """
-from typing import Optional, Tuple, Callable
 
-import numpy as np
+from typing import Callable, Optional, Tuple
+
 import matplotlib.pyplot as plt
-from numpy.typing import NDArray
+import numpy as np
 from matplotlib.pyplot import subplots
+from numpy.typing import NDArray
 
 from battlesim import _utils
 from battlesim._mathutils import minmax
@@ -116,7 +117,7 @@ class Terrain:
         self._res = r
 
     @property
-    def Z_(self) -> NDArray[np.float64]:
+    def Z_(self) -> NDArray[np.float64] | None:
         """The array defining height."""
         return self._Z
 
@@ -137,9 +138,12 @@ class Terrain:
         x : ndarray[float]
             Meshgrid of terrain
         """
+        z_values = self.Z_
+        assert z_values is not None
         x0, x1, y0, y1 = self.bounds_
-        x, y = np.linspace(x0, x1, self.Z_.shape[0]), np.linspace(
-            y0, y1, self.Z_.shape[1]
+        x, y = (
+            np.linspace(x0, x1, z_values.shape[0]),
+            np.linspace(y0, y1, z_values.shape[1]),
         )
         return np.meshgrid(x, y)
 

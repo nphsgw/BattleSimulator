@@ -1,8 +1,8 @@
-""" Various utilities for fast computation of things within the simulation. """
+"""Various utilities for fast computation of things within the simulation."""
 
 import numpy as np
-from numpy.typing import NDArray
 from numba import jit
+from numpy.typing import NDArray
 
 
 @jit

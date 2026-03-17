@@ -31,11 +31,12 @@ passed to the functions.
         -1 if not valid target chosen.
 
 """
-from typing import Optional, List
+
+from typing import List, Optional
 
 import numpy as np
-from numpy.typing import NDArray
 from numba import jit
+from numpy.typing import NDArray
 
 from battlesim import _mathutils
 

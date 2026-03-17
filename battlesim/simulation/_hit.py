@@ -7,9 +7,10 @@ Created on Tue Oct  1 16:20:15 2019
 
 Performs calculations on the 'hit chance' of various attacks.
 """
+
 import numpy as np
-from numpy.typing import NDArray
 from numba import jit
+from numpy.typing import NDArray
 
 
 @jit
