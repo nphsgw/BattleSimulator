@@ -1,0 +1,24 @@
+database = "../datasets/damage-demo.csv"
+bounds = [-3.0, 3.0, -3.0, 3.0]
+terrain_resolution = 0.2
+seed = 0
+family = "damage-demo"
+
+[rules]
+max_ticks = 10
+stalemate_ticks = 10
+line_of_sight = false
+collision = false
+slope_movement = false
+
+[[armies]]
+name = "Damage Demo Red"
+count = 1
+position_distribution = "normal"
+position_parameters = [-1.0, 0.0]
+
+[[armies]]
+name = "Damage Demo Blue"
+count = 1
+position_distribution = "normal"
+position_parameters = [1.0, 0.0]

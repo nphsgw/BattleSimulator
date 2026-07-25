@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+import numpy as np
 import pytest
 
 import battlesim as bsm
@@ -15,6 +16,44 @@ def test_scenario_loads_relative_database():
     assert scenario.database == str(Path("datasets/starwars-clonewars.csv").resolve())
     assert scenario.armies[0].name == "B1 battledroid"
     assert scenario.armies[1].position_parameters == (5.0, 0.5)
+
+
+def test_damage_demo_shows_armor_then_hp_decreasing():
+    scenario = bsm.BattleScenario.from_toml("scenarios/damage-demo.toml")
+
+    battle = scenario.run()
+
+    assert battle.sim_ is not None
+    assert np.array_equal(
+        battle.sim_["armor"],
+        np.array(
+            [
+                [20, 20],
+                [10, 10],
+                [0, 0],
+                [0, 0],
+                [0, 0],
+                [0, 0],
+            ],
+            dtype=np.float32,
+        ),
+    )
+    assert np.array_equal(
+        battle.sim_["hp"],
+        np.array(
+            [
+                [30, 30],
+                [30, 30],
+                [30, 30],
+                [20, 20],
+                [10, 10],
+                [0, 0],
+            ],
+            dtype=np.float32,
+        ),
+    )
+    assert battle.result_ is not None
+    assert battle.result_.termination_reason == bsm.TerminationReason.MUTUAL_DESTRUCTION
 
 
 def test_army_spec_loads_targeting_ai_options():

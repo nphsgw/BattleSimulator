@@ -113,6 +113,13 @@ For a non-interactive workflow, render a TOML scenario directly to an image:
 
     uv run battlesim-render scenarios/clone-vs-droid.toml battle.png
 
+To inspect damage application clearly, use the bundled five-tick duel. Both
+units lose armor before HP:
+
+.. code-block:: console
+
+    uv run battlesim-render scenarios/damage-demo.toml damage-demo.png --frame 3
+
 ``Battle.sim_jupyter()`` remains available for compatibility and for teaching
 or exploratory use.
 

@@ -1,0 +1,3 @@
+Name,Allegiance,Type,Armor,HP,Damage,Range,Movement Speed,Accuracy,Miss,Attack Interval,Radius
+Damage Demo Red,Red,Debug,20,30,10,1000,0,100,0,1,0.1
+Damage Demo Blue,Blue,Debug,20,30,10,1000,0,100,0,1,0.1

@@ -1,11 +1,16 @@
 """Local Streamlit viewer for BattleSimulator."""
 
 from io import BytesIO
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import streamlit as st
 
 import battlesim as bsm
+
+_DAMAGE_DEMO_SCENARIO = (
+    Path(__file__).resolve().parents[1] / "scenarios" / "damage-demo.toml"
+)
 
 
 def _optional_round(value: float | None) -> float | None:
@@ -81,41 +86,52 @@ def main() -> None:
 
     config_column, display_column = st.columns(2)
     with config_column:
-        left_unit = st.selectbox(
-            "Army 1",
-            unit_options,
-            index=_default_index(unit_options, "B1 battledroid", 0),
-            key="left_unit",
+        scenario_preset = st.selectbox(
+            "Scenario",
+            ("Custom battle", "Damage demo"),
+            key="scenario_preset",
         )
-        left_count = st.number_input(
-            "Army 1 count",
-            min_value=1,
-            max_value=100,
-            value=4,
-            key="left_count",
-        )
-        right_unit = st.selectbox(
-            "Army 2",
-            unit_options,
-            index=_default_index(
+        if scenario_preset == "Custom battle":
+            left_unit = st.selectbox(
+                "Army 1",
                 unit_options,
-                "Clone Trooper",
-                min(1, len(unit_options) - 1),
-            ),
-            key="right_unit",
-        )
-        right_count = st.number_input(
-            "Army 2 count",
-            min_value=1,
-            max_value=100,
-            value=4,
-            key="right_count",
-        )
-        terrain = st.selectbox(
-            "Terrain",
-            ("flat", "grid", "contour"),
-            key="terrain",
-        )
+                index=_default_index(unit_options, "B1 battledroid", 0),
+                key="left_unit",
+            )
+            left_count = st.number_input(
+                "Army 1 count",
+                min_value=1,
+                max_value=100,
+                value=4,
+                key="left_count",
+            )
+            right_unit = st.selectbox(
+                "Army 2",
+                unit_options,
+                index=_default_index(
+                    unit_options,
+                    "Clone Trooper",
+                    min(1, len(unit_options) - 1),
+                ),
+                key="right_unit",
+            )
+            right_count = st.number_input(
+                "Army 2 count",
+                min_value=1,
+                max_value=100,
+                value=4,
+                key="right_count",
+            )
+            terrain = st.selectbox(
+                "Terrain",
+                ("flat", "grid", "contour"),
+                key="terrain",
+            )
+        else:
+            st.info(
+                "Armor 20 → 10 → 0 の後、HP 30 → 20 → 10 → 0 と減る"
+                "5 tickの1対1デモです。"
+            )
         run_simulation = st.button("Run simulation", type="primary", key="run")
 
     with display_column:
@@ -133,13 +149,16 @@ def main() -> None:
         )
 
     if run_simulation:
-        scenario = _build_scenario(
-            left_unit,
-            int(left_count),
-            right_unit,
-            int(right_count),
-            terrain,
-        )
+        if scenario_preset == "Damage demo":
+            scenario = bsm.BattleScenario.from_toml(_DAMAGE_DEMO_SCENARIO)
+        else:
+            scenario = _build_scenario(
+                left_unit,
+                int(left_count),
+                right_unit,
+                int(right_count),
+                terrain,
+            )
         try:
             battle = scenario.run()
         except Exception as error:

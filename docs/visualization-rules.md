@@ -89,6 +89,10 @@ view model は UI framework に依存させず、固定 frame を使った単体
 ## Visibility Policy
 - 通常表示では情報量を抑える
 - ローカル Web UI の戦闘画面では、HP バーと地形補助テキストをユニットへ重畳しない
+- ローカル Web UI では自由なunit選択に加え、同梱scenarioをpresetとして
+  選択・実行できるようにする
+- `Damage demo` presetは `scenarios/damage-demo.toml` を読み込み、parameter画面で
+  Armorが先に減った後にHPが減る様子を確認できるようにする
 - ローカル Web UI の戦闘画面では、固定されたユニット番号を重畳する
 - target line は必要時だけ表示できるようにする
 - 線、ラベル、バーは地形背景より前面に描画する

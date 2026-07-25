@@ -553,12 +553,21 @@ UI は戦闘ロジックや描画ロジックを実装せず、`BattleScenario` 
 ローカル Web UI では HP bar と terrain text を戦闘画面へ重畳しない。
 これらは既存描画 API の互換機能としては維持する。
 
+ローカル Web UI のscenario選択:
+- `Custom battle`: 従来どおり左右のunit、unit数、terrainを指定する
+- `Damage demo`: `scenarios/damage-demo.toml` を読み込み、ArmorからHPの順に
+  damageが適用される短い1対1戦を再生する
+
 ### Static Rendering CLI
 `battlesim-render` は TOML scenario を実行し、指定 frame を画像へ保存する。
 既定では最終 frame を描画する。
 
 同梱 scenario:
 - `scenarios/clone-vs-droid.toml`
+- `scenarios/damage-demo.toml`
+  - 1対1、平坦地形、命中率100%、回避率0%の可視化確認用scenario
+  - 各unitはArmor 20、HP 30、Damage 10とし、Armorが先に減った後で
+    HPが減るrules version 1のdamage適用順を短時間で確認できる
 
 ### Visualization View Model
 `build_frame_view()` は構造化 NumPy frame を UI 非依存の `FrameView` へ変換する。

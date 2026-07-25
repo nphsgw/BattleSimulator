@@ -55,6 +55,7 @@ def test_battle_viewer_loads_display_options():
     app = AppTest.from_file(app_path, default_timeout=10).run()
 
     assert not app.exception
+    assert app.selectbox(key="scenario_preset").value == "Custom battle"
     assert app.button(key="run").label == "Run simulation"
     assert app.toggle(key="show_target_lines").value is False
     assert app.select_slider(key="playback_speed").value == 1.0
@@ -63,6 +64,39 @@ def test_battle_viewer_loads_display_options():
 
     assert not app.exception
     assert app.toggle(key="show_target_lines").value is True
+
+
+def test_battle_viewer_runs_damage_demo_preset():
+    app = AppTest.from_file(
+        Path("apps/battle_viewer.py"),
+        default_timeout=10,
+    ).run()
+
+    app.selectbox(key="scenario_preset").set_value("Damage demo").run()
+    assert not app.exception
+    assert any("Armor 20" in info.value for info in app.info)
+
+    app.button(key="run").click().run()
+
+    assert not app.exception
+    battle = app.session_state["battle"]
+    assert battle.sim_ is not None
+    assert battle.sim_["armor"].tolist() == [
+        [20.0, 20.0],
+        [10.0, 10.0],
+        [0.0, 0.0],
+        [0.0, 0.0],
+        [0.0, 0.0],
+        [0.0, 0.0],
+    ]
+    assert battle.sim_["hp"].tolist() == [
+        [30.0, 30.0],
+        [30.0, 30.0],
+        [30.0, 30.0],
+        [20.0, 20.0],
+        [10.0, 10.0],
+        [0.0, 0.0],
+    ]
 
 
 def test_advance_playback_moves_one_frame():
