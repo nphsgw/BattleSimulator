@@ -4,7 +4,6 @@
 Responsible for creating a Battle object.
 """
 
-import itertools as it
 import warnings
 from collections.abc import Callable
 from numbers import Integral
@@ -91,6 +90,7 @@ class Battle:
                     ("utype", "u1"),
                     ("team", "u1"),
                     ("ai_func_index", "u1"),
+                    ("target_ai_func_index", "u1"),
                 ],
                 align=True,
             ),
@@ -131,7 +131,12 @@ class Battle:
         assert matrix is not None
         xmin, xmax = matrix["x"].min(), matrix["x"].max()
         ymin, ymax = matrix["y"].min(), matrix["y"].max()
-        return np.floor(xmin), np.ceil(xmax), np.floor(ymin), np.ceil(ymax)
+        return (
+            float(np.floor(xmin)),
+            float(np.ceil(xmax)),
+            float(np.floor(ymin)),
+            float(np.ceil(ymax)),
+        )
 
     def _check_bounds_to_M(self, bounds: TUPLE4) -> None:
         xmin, xmax, ymin, ymax = self._get_bounds_from_M()
@@ -152,6 +157,25 @@ class Battle:
                 "ymax bounds value: {} < unit bound {}".format(bounds[3], ymax)
             )
 
+    def _expand_bounds_to_M(self) -> None:
+        """Expand configured bounds only where initial units fall outside them."""
+        unit_bounds = self._get_bounds_from_M()
+        configured = self.T_.bounds_
+        expanded = (
+            min(configured[0], unit_bounds[0]),
+            max(configured[1], unit_bounds[1]),
+            min(configured[2], unit_bounds[2]),
+            max(configured[3], unit_bounds[3]),
+        )
+        if expanded != configured:
+            warnings.warn(
+                f"Battle bounds expanded from {configured} to {expanded} "
+                "to contain initial unit positions.",
+                UserWarning,
+                stacklevel=2,
+            )
+            self.T_.bounds_ = expanded
+
     def _presim(self) -> None:
         self._M = Battle._generate_M(sum(self._unit_n))
         matrix = self._M
@@ -159,7 +183,8 @@ class Battle:
         assert self._comps is not None
         # check that groups exist in army_set
         _seg_start, _seg_end = self._segments
-        decision_ai_map = dict(zip(AI.get_function_names(), it.count()))
+        decision_ai_map = {"aggressive": 0, "hit_and_run": 1}
+        rolling_ai_map = {"nearest": 0, "random": 1, "close_weak": 2}
 
         # set initial values.
         for group, (u, n, start, end, comp) in enumerate(
@@ -178,16 +203,17 @@ class Battle:
             matrix["dmg"][start:end] = self.db_.loc[u, "Damage"]
             # ai func index (0 = aggressive, 1 = hit_and_run)
             matrix["ai_func_index"][start:end] = decision_ai_map[comp.decision_ai]
+            matrix["target_ai_func_index"][start:end] = rolling_ai_map[comp.rolling_ai]
             # initialise position
             matrix["x"][start:end] = comp.pos.sample(n)
             matrix["y"][start:end] = comp.pos.sample(n)
 
-        # modify bounds to reflect new positions.
-        self.bounds_ = self._get_bounds_from_M()
+        # Preserve configured bounds, expanding only where positions fall outside.
+        self._expand_bounds_to_M()
         # assign initial AI targets.
         for group, (start, end) in enumerate(zip(_seg_start, _seg_end)):
-            # assign targets
-            matrix["target"][start:end] = _target.global_nearest(matrix, group)
+            init_ai = getattr(_target, f"global_{self._comps[group].init_ai}")
+            matrix["target"][start:end] = init_ai(matrix, group)
 
     @property
     def composition_(self) -> list[Composite]:
@@ -338,6 +364,15 @@ class Battle:
                     f"unsupported decision_ai: {composite.decision_ai!r}; "
                     f"expected one of {AI.get_function_names()}"
                 )
+            for field_name, target_ai in (
+                ("init_ai", composite.init_ai),
+                ("rolling_ai", composite.rolling_ai),
+            ):
+                if target_ai not in _target.get_function_names():
+                    raise ValueError(
+                        f"unsupported {field_name}: {target_ai!r}; "
+                        f"expected one of {_target.get_function_names()}"
+                    )
 
         normalized_groups = [
             (composite.name.lower(), composite.n) for composite in army_set

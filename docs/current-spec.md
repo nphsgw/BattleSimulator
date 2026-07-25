@@ -84,15 +84,15 @@
 - `pos`
   初期位置サンプリング設定
 - `init_ai`
-  初期ターゲット選択方針
+  初期ターゲット選択方針。`random`, `nearest`, `close_weak` に対応する
 - `rolling_ai`
-  戦闘中のターゲット選択方針
+  現在対象の死亡後に使うターゲット再選択方針。
+  `random`, `nearest`, `close_weak` に対応する
 - `decision_ai`
   戦闘行動方針
 
 注意:
-- 現時点で実際に戦闘処理へ使われているのは主に `decision_ai` と `pos`
-- `init_ai` と `rolling_ai` は API 上は保持されるが、現在の主実装では積極的には使われていない
+- `init_ai`, `rolling_ai`, `decision_ai`, `pos` はすべて戦闘処理へ使用される
 
 ### `Sampling`
 NumPy の乱数分布をラップするクラス。
@@ -203,6 +203,8 @@ NumPy の乱数分布をラップするクラス。
   陣営 ID
 - `ai_func_index`
   行動 AI の整数 ID
+- `target_ai_func_index`
+  対象死亡後に使うターゲット再選択 AI の整数 ID
 
 ### Team And Group Semantics
 - `team` は陣営を表す
@@ -251,11 +253,11 @@ NumPy の乱数分布をラップするクラス。
 - `global_nearest`
 - `global_close_weak`
 
-現実装で初期ターゲット割り当てに使っているのは `global_nearest`。
+各 Composite の `init_ai` に対応する global 関数を初期ターゲット割り当てに使う。
 
 ### Current Runtime Behavior
 - 戦闘中に現在ターゲットが死亡していたら `_select_enemy()` で再選択する
-- 再選択時にはそのユニットから見た候補敵集合が使われる
+- 再選択時にはそのユニットの `rolling_ai` と候補敵集合が使われる
 - 候補は再選択時点で生存している敵に限定される
 - 再選択した tick では、新しいターゲットへの距離、方向、高低差を使って行動する
 - データベース全体で割り当てられた陣営 ID が非連続でも動作する
@@ -311,9 +313,17 @@ NumPy の乱数分布をラップするクラス。
 - 距離によるペナルティ
 
 現行式:
-- `acc * (1 - dodge) * (1 - distance / global_penalty)`
+- `distance_factor = 1 - 0.5 * distance / effective_range`
+- `hit_chance = acc * (1 - dodge) * distance_factor`
 
-`global_penalty` の既定値は `15.0`。
+攻撃判定は実効射程内でのみ行われるため、距離係数は射手直上で 1、
+射程限界で 0.5 となる。計算結果は `[0, 1]` へ制限する。
+
+### Tick Resolution
+- 生存ユニットは unit index の昇順に行動する
+- 移動、命中、ダメージは各ユニットの行動時に即時反映する
+- 先行ユニットに倒されたユニットは、その tick では行動しない
+- 現行の unit index 順を既定 initiative として扱う
 
 ### Damage
 基本ダメージは地形高低差補正を含む。
@@ -332,6 +342,9 @@ NumPy の乱数分布をラップするクラス。
 ### Bounds
 地形は戦場範囲 `bounds_` を持つ。
 境界外へ出ないよう、シミュレーションループ内で位置補正が入る。
+コンストラクタまたは `set_bounds()` で指定した範囲は最小範囲として維持する。
+初期配置が範囲外にある場合は、その unit を含む方向だけ bounds を拡張し、
+自動拡張したことを `UserWarning` で通知する。
 
 ### Forms
 - `None`
@@ -515,12 +528,11 @@ UI は戦闘ロジックや描画ロジックを実装せず、`BattleScenario` 
 ### Input Validation Examples
 - `create_army()` は `Composite` の list / tuple 以外を拒否する
 - `create_army()` は空の構成、1 未満の unit 数、データベースにない unit 名、
-  未対応の `decision_ai` を拒否する
+  未対応の `init_ai`, `rolling_ai`, `decision_ai` を拒否する
 - `Terrain.res_` は `float` で、極小値未満は拒否する
 - ユニットデータには必須列がそろっている必要がある
 
 ## Known Limitations
-- `Composite.init_ai` と `Composite.rolling_ai` は保持されるが、現行主実装での影響は限定的
 - `AI.defensive` は未実装
 - ノートブックや教材コードには本体仕様と一致しない説明が残る可能性がある
 - 仕様文書は現実装に基づくため、将来変更時はこの文書も更新が必要

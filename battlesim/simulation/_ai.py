@@ -13,7 +13,7 @@ from numba import njit
 from numpy.typing import NDArray
 
 from . import _damage, _hit, _move
-from ._target import nearest
+from ._target import close_weak, nearest, random
 
 
 def get_function_names() -> list[str]:
@@ -29,7 +29,13 @@ def _select_enemy(M, enemies: NDArray[np.uint], i: int) -> bool:
     if M["hp"][M["target"][i]] <= 0:
         alive_enemies = enemies[M["hp"][enemies] > 0.0]
         if alive_enemies.shape[0] > 0:
-            t = nearest(M, alive_enemies, i)
+            target_ai = M["target_ai_func_index"][i]
+            if target_ai == 0:
+                t = nearest(M, alive_enemies, i)
+            elif target_ai == 1:
+                t = random(M, alive_enemies, i)
+            else:
+                t = close_weak(M, alive_enemies, i)
             if t != -1:
                 M["target"][i] = t
                 return True
@@ -88,7 +94,7 @@ def aggressive(
             _move.to_enemy(M, delta_x, delta_y, dists, z_i, i)
         else:
             # calculate the chance of hitting the opponent
-            h_chance = _hit.basic_chance(M, dists, i)
+            h_chance = _hit.basic_chance(M, dists, r_i, i)
             # if hit chance overcomes round luck.. deal damage to HP.
             if h_chance > luck[i]:
                 _damage.basic(M, z_i, z_j, i)
@@ -137,7 +143,7 @@ def hit_and_run(
                 return True
             else:
                 # so we're in range, the enemy is not, attack.
-                h_chance = _hit.basic_chance(M, dists, i)
+                h_chance = _hit.basic_chance(M, dists, range_i, i)
 
                 if h_chance > luck[i]:
                     _damage.basic(M, z_i, z_j, i)

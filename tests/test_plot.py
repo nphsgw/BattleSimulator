@@ -17,7 +17,11 @@ ROOT = (Path(__file__).parent / "../").resolve()
 
 
 def _build_small_battle() -> bsm.Battle:
-    battle = bsm.Battle(str(ROOT / "datasets/starwars-clonewars.csv"), use_tqdm=False)
+    battle = bsm.Battle(
+        str(ROOT / "datasets/starwars-clonewars.csv"),
+        bounds=(-10.0, 10.0, -10.0, 10.0),
+        use_tqdm=False,
+    )
     battle.create_army(
         [bsm.Composite("B1 battledroid", 3), bsm.Composite("Clone Trooper", 3)]
     )

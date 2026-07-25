@@ -17,6 +17,8 @@ class ArmySpec:
     count: int
     position_distribution: str = "normal"
     position_parameters: tuple[float, ...] = ()
+    init_ai: str = "nearest"
+    rolling_ai: str = "nearest"
     decision_ai: str = "aggressive"
 
     @classmethod
@@ -28,6 +30,8 @@ class ArmySpec:
             position_parameters=tuple(
                 float(value) for value in data.get("position_parameters", ())
             ),
+            init_ai=str(data.get("init_ai", "nearest")),
+            rolling_ai=str(data.get("rolling_ai", "nearest")),
             decision_ai=str(data.get("decision_ai", "aggressive")),
         )
 
@@ -41,6 +45,8 @@ class ArmySpec:
                 self.position_distribution,
                 *self.position_parameters,
             ),
+            init_ai=self.init_ai,
+            rolling_ai=self.rolling_ai,
             decision_ai=self.decision_ai,
         )
 

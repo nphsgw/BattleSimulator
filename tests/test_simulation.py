@@ -1,10 +1,15 @@
 """Regression tests for core simulation rules."""
 
 import numpy as np
+from numba import typed
 
 import battlesim as bsm
-from battlesim.simulation import _ai, _damage
-from battlesim.simulation._simulator_fast import _terrain_tiles, simulate_battle
+from battlesim.simulation import _ai, _damage, _hit
+from battlesim.simulation._simulator_fast import (
+    _loop_units,
+    _terrain_tiles,
+    simulate_battle,
+)
 
 
 def _matrix(n: int) -> np.ndarray:
@@ -31,6 +36,31 @@ def test_retargeting_ignores_enemies_killed_earlier_in_tick():
     matrix["target"][0] = 1
     matrix["hp"][1] = 0.0
     matrix["x"] = [0.0, 0.1, 1.0]
+
+    selected = _ai._select_enemy(matrix, np.array([1, 2]), 0)
+
+    assert selected is True
+    assert matrix["target"][0] == 2
+
+
+def test_retargeting_uses_units_rolling_ai():
+    matrix = _matrix(4)
+    matrix["target"][0] = 1
+    matrix["hp"] = [10.0, 0.0, 100.0, 1.0]
+    matrix["x"] = [0.0, 0.1, 1.0, 1.5]
+    matrix["target_ai_func_index"][0] = 2
+
+    selected = _ai._select_enemy(matrix, np.array([1, 2, 3]), 0)
+
+    assert selected is True
+    assert matrix["target"][0] == 3
+
+
+def test_retargeting_supports_random_rolling_ai():
+    matrix = _matrix(3)
+    matrix["target"][0] = 1
+    matrix["hp"][1] = 0.0
+    matrix["target_ai_func_index"][0] = 1
 
     selected = _ai._select_enemy(matrix, np.array([1, 2]), 0)
 
@@ -87,6 +117,54 @@ def test_hit_and_run_uses_the_documented_effective_range_formula():
     )
 
     assert matrix["x"][0] == 0.0
+
+
+def test_hit_chance_uses_effective_range_and_keeps_half_at_limit():
+    matrix = _matrix(2)
+    matrix["target"] = [1, 0]
+    matrix["acc"][0] = 0.8
+    matrix["dodge"][1] = 0.25
+
+    chance = _hit.basic_chance(matrix, np.array([10.0, 10.0]), 10.0, 0)
+
+    assert np.isclose(chance, 0.3)
+
+
+def test_hit_chance_is_zero_for_non_positive_effective_range():
+    matrix = _matrix(2)
+    matrix["target"] = [1, 0]
+    matrix["acc"][0] = 1.0
+
+    chance = _hit.basic_chance(matrix, np.zeros(2), 0.0, 0)
+
+    assert chance == 0.0
+
+
+def test_units_act_in_index_order_and_dead_units_skip_their_turn():
+    matrix = _matrix(2)
+    matrix["team"] = [0, 1]
+    matrix["target"] = [1, 0]
+    matrix["hp"] = 1.0
+    matrix["dmg"] = 2.0
+    matrix["acc"] = 1.0
+    matrix["x"] = 0.0
+    matrix["y"] = 0.0
+    enemy_targets = typed.List([np.array([1]), np.array([0])])
+
+    _loop_units(
+        matrix,
+        np.full(2, 0.5),
+        np.zeros(2),
+        np.zeros(2),
+        np.zeros(2),
+        np.zeros(2),
+        np.zeros(2),
+        enemy_targets,
+        np.zeros((1, 1)),
+    )
+
+    assert matrix["hp"][0] == 1.0
+    assert matrix["hp"][1] <= 0.0
 
 
 def test_terrain_bounds_map_to_valid_endpoint_indexes():
