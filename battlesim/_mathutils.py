@@ -97,7 +97,10 @@ def matrix_argmin(x_pos: NDArray[np.float64]) -> NDArray[np.int64]:
 def minmax(mat: NDArray[np.float64]) -> NDArray[np.float64]:
     """Scales X into the [0, 1] range."""
     xm = np.min(mat)
-    return (mat - xm) / (np.max(mat) - xm)
+    span = np.max(mat) - xm
+    if span == 0.0:
+        return np.zeros_like(mat)
+    return (mat - xm) / span
 
 
 @njit

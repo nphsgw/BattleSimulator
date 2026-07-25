@@ -47,7 +47,12 @@
 - [x] 代表的な battle 条件で `sim_export()` を確認する
 - [x] `docs/current-spec.md` に可視化仕様を追記する
 
-### Notebook Widget Controls
+### Notebook Widget Controls (Superseded)
+
+この節は notebook 中心だった時点の実装履歴であり、現行機能の一覧ではない。
+Notebook-independent visualization への移行後、`examples/debug-visualization.ipynb`
+から widget UI は除かれている。現行仕様は `docs/current-spec.md` の
+Notebook Interaction を正とする。
 - [x] notebook 上で debug 可視化の表示項目を切り替えられるようにする
 - [x] `show_hp`, `show_target_lines`, `show_terrain_text` を widget から制御できるようにする
 - [x] frame slider で表示フレームを切り替えられるようにする

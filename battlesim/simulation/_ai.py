@@ -27,8 +27,9 @@ __all__ = get_function_names()
 @njit
 def _select_enemy(M, enemies: NDArray[np.uint], i: int) -> bool:
     if M["hp"][M["target"][i]] <= 0:
-        if enemies.shape[0] > 0:
-            t = nearest(M, enemies, i)
+        alive_enemies = enemies[M["hp"][enemies] > 0.0]
+        if alive_enemies.shape[0] > 0:
+            t = nearest(M, alive_enemies, i)
             if t != -1:
                 M["target"][i] = t
                 return True
@@ -38,6 +39,15 @@ def _select_enemy(M, enemies: NDArray[np.uint], i: int) -> bool:
             return False
     else:
         return True
+
+
+@njit
+def _refresh_target_geometry(M, dists, delta_x, delta_y, i: int) -> None:
+    """Refresh batched geometry after a unit changes target during this tick."""
+    j = M["target"][i]
+    delta_x[i] = M["x"][j] - M["x"][i]
+    delta_y[i] = M["y"][j] - M["y"][i]
+    dists[i] = math.sqrt(delta_x[i] ** 2 + delta_y[i] ** 2)
 
 
 # -------------------------- ACCESSED FUNCTIONS -----------------------------------------
@@ -65,15 +75,13 @@ def aggressive(
     This basic AI looks whether the current unit i is in range of it's target'
     and if it isn't, moves towards it until it is, then attacks.
     """
-    # fetch height for unit i given indices.
-    j = M["target"][i]
-    z_i = terrain_height[math.trunc(xtile[i]), math.trunc(ytile[i])]
-    z_j = terrain_height[math.trunc(xtile[j]), math.trunc(ytile[j])]
-    # calculate updated range of unit
-    r_i = M["range"][i] * ((z_i**2 / 3.0) + 1.0)
-
     # use ai_map to dictionary-map the group number to the appropriate AI function
     if _select_enemy(M, enemies, i):
+        _refresh_target_geometry(M, dists, delta_x, delta_y, i)
+        j = M["target"][i]
+        z_i = terrain_height[math.trunc(xtile[i]), math.trunc(ytile[i])]
+        z_j = terrain_height[math.trunc(xtile[j]), math.trunc(ytile[j])]
+        r_i = M["range"][i] * ((z_i**2 / 3.0) + 1.0)
         # if not in range, move towards target, or hit a chance (5%) and move forward anyway.
         if dists[i] > r_i or luck[i] < 0.05:
             # move unit towards attacking enemy.
@@ -108,12 +116,13 @@ def hit_and_run(
     """
     # assign target enemy
     if _select_enemy(M, enemies, i):
+        _refresh_target_geometry(M, dists, delta_x, delta_y, i)
         # cache quick stats
         j = M["target"][i]
         z_i = terrain_height[math.trunc(xtile[i]), math.trunc(ytile[i])]
         z_j = terrain_height[math.trunc(xtile[j]), math.trunc(ytile[j])]
-        range_i = M["range"][i] * ((z_i * z_i) / 3.0) + 1.0
-        range_j = M["range"][j] * ((z_j * z_j) / 3.0) + 1.0
+        range_i = M["range"][i] * (((z_i * z_i) / 3.0) + 1.0)
+        range_j = M["range"][j] * (((z_j * z_j) / 3.0) + 1.0)
 
         if (M["speed"][i] > M["speed"][j]) and (range_i > range_j):
             # if we're out of range, move towards

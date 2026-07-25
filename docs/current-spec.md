@@ -36,7 +36,8 @@
 
 主な公開メソッド:
 - `create_army(army_set)`
-  `Composite` の list を受け取り、軍構成を設定する
+  `Composite` の list を受け取り、軍構成を設定する。
+  構成を変更した場合は以前の内部行列とシミュレーション結果を破棄する
 - `apply_terrain(t=None, res=0.1)`
   地形の見た目または `Terrain` オブジェクトを設定する
 - `set_bounds(bounds)`
@@ -68,9 +69,9 @@
 - `n_allegiance_`
   陣営ごとの総ユニット数
 - `allegiances_`
-  陣営 ID と陣営名の対応
+  現在の軍構成に参加する陣営 ID と陣営名の対応
 - `bounds_`
-  戦場範囲
+  戦場範囲。軍構成の作成前でも参照できる
 
 ### `Composite`
 1 種類のユニット群を表す設定オブジェクト。
@@ -255,6 +256,9 @@ NumPy の乱数分布をラップするクラス。
 ### Current Runtime Behavior
 - 戦闘中に現在ターゲットが死亡していたら `_select_enemy()` で再選択する
 - 再選択時にはそのユニットから見た候補敵集合が使われる
+- 候補は再選択時点で生存している敵に限定される
+- 再選択した tick では、新しいターゲットへの距離、方向、高低差を使って行動する
+- データベース全体で割り当てられた陣営 ID が非連続でも動作する
 
 ## AI Specification
 
@@ -278,6 +282,8 @@ NumPy の乱数分布をラップするクラス。
 - 相手の射程内に入りすぎたら後退
 - 自分だけが射程内なら攻撃
 - 優位でない場合は `aggressive` にフォールバックする
+- 射程の地形補正式は `aggressive` と同じ
+  `range * ((z^2 / 3) + 1)` を使う
 
 ## Movement Specification
 
@@ -319,6 +325,7 @@ NumPy の乱数分布をラップするクラス。
 - 相手の `armor` が残っている場合、まず装甲へダメージを与える
 - 装甲を超過した分だけ `hp` が減る
 - 装甲がない場合は `hp` を直接減らす
+- ダメージ適用後の `armor` の下限は 0 とする
 
 ## Terrain Specification
 
@@ -337,6 +344,8 @@ NumPy の乱数分布をラップするクラス。
 ### Height Map Generation
 - `form=None` の場合はゼロ配列
 - それ以外では、Perlin ノイズベースの高さマップを生成する
+- `generate(f=...)` では戦場範囲と解像度に対応する座標 grid を `f` へ渡す
+- `f` が一定値の map を返した場合は、0 のフラット地形へ正規化する
 
 ### Terrain Effect Summary
 地形は以下へ影響する。
@@ -345,6 +354,7 @@ NumPy の乱数分布をラップするクラス。
 - ダメージ
 
 現行実装では、AI 内で高低差をもとに射程やダメージが補正される。
+戦場 bounds の最大座標を含め、座標は常に有効な地形 tile index へ写像される。
 
 ## Output Specification
 
@@ -497,12 +507,15 @@ UI は戦闘ロジックや描画ロジックを実装せず、`BattleScenario` 
 ## Validation And Error Behavior
 
 ### Typical Runtime Errors
-- `create_army()` 前に戦闘関連プロパティへアクセスすると `AttributeError`
+- `create_army()` 前に軍構成へ依存するプロパティへアクセスすると `AttributeError`
 - 不正な地形 form や bounds を指定すると `AttributeError` または `TypeError`
+- 未対応の地形 dtype を指定すると `ValueError`
 - 不正なデータベース形式を渡すと `ValueError`
 
 ### Input Validation Examples
 - `create_army()` は `Composite` の list / tuple 以外を拒否する
+- `create_army()` は空の構成、1 未満の unit 数、データベースにない unit 名、
+  未対応の `decision_ai` を拒否する
 - `Terrain.res_` は `float` で、極小値未満は拒否する
 - ユニットデータには必須列がそろっている必要がある
 

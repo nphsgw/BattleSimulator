@@ -8,6 +8,7 @@ Created on Thu Oct 10 16:17:14 2019
 
 from typing import Any, cast
 
+import numpy as np
 import pytest
 
 # import local
@@ -38,6 +39,8 @@ def test_define_terrain():
         bsm.Terrain(cast(Any, (0, [0, 1], "hi", 10)), 0.1, "contour")
     with pytest.raises(AttributeError):
         bsm.Terrain((0, 10, 0, 10), 0.1, cast(Any, "hello contour boy"))
+    with pytest.raises(ValueError, match="dtype"):
+        bsm.Terrain(dtype="unsupported")
 
     bsm.Terrain((0, 10, 0, 10), 0.1, None)
 
@@ -73,3 +76,22 @@ def test_generate():
     # generate with function that does not have 2 parameters
 
     # generate with function that does not pass 2 numpy arrays
+
+
+def test_generate_accepts_function_on_new_terrain():
+    terrain = bsm.Terrain((0, 4, 0, 2), 1.0, "contour")
+
+    terrain.generate(lambda x, y: x + y)
+
+    assert terrain.Z_ is not None
+    assert terrain.Z_.shape == (4, 2)
+    assert np.isfinite(terrain.Z_).all()
+
+
+def test_generate_normalizes_constant_function_to_flat_terrain():
+    terrain = bsm.Terrain((0, 4, 0, 2), 1.0, "grid")
+
+    terrain.generate(lambda x, y: np.full_like(x, 7.0))
+
+    assert terrain.Z_ is not None
+    assert np.array_equal(terrain.Z_, np.zeros((4, 2)))

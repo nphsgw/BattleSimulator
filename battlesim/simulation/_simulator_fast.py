@@ -20,6 +20,17 @@ __all__ = ["simulate_battle"]
 
 
 @njit
+def _terrain_tiles(M, Z, bounds):
+    """Map battlefield coordinates to valid terrain array indexes."""
+    x_indexes = np.array([0, Z.shape[0] - 1], dtype=np.int64)
+    y_indexes = np.array([0, Z.shape[1] - 1], dtype=np.int64)
+    return (
+        np.interp(M["x"], bounds[:2], x_indexes),
+        np.interp(M["y"], bounds[2:], y_indexes),
+    )
+
+
+@njit
 def _copy_frame(Frames, M, dx, dy, dist, z_i, z_j, effective_range, move_factor, i):
     # copy over data from M into frames.
     Frames["x"][i] = M["x"]
@@ -95,18 +106,12 @@ def _step_through_update(M, Z, max_step, teams, enemy_targets, bounds, frames):
     t = 0
     running = True
 
-    zx_index = np.array([0, Z.shape[0]], dtype=np.int64)
-    zy_index = np.array([0, Z.shape[1]], dtype=np.int64)
-    xb = bounds[:2]
-    yb = bounds[2:]
-
     # begin loop
     while (t < max_step) and running:
         """# perform a boundary check."""
         _mathutils.boundary_check2(bounds, M["x"], M["y"])
         # iterate through and cast every tile element from interpolation.
-        xtile = np.interp(M["x"], xb, zx_index)
-        ytile = np.interp(M["y"], yb, zy_index)
+        xtile, ytile = _terrain_tiles(M, Z, bounds)
         """# pre-compute the direction derivatives and magnitude/distance for each unit to it's target in batch."""
         dx = M["x"][M["target"]] - M["x"]
         dy = M["y"][M["target"]] - M["y"]
@@ -116,7 +121,8 @@ def _step_through_update(M, Z, max_step, teams, enemy_targets, bounds, frames):
         # loop over enemy target lists and update.
         for g in range(teams.shape[0]):
             # update enemy targets.
-            enemy_targets[g] = np.where((M["hp"] > 0.0) & (M["team"] != teams[g]))[0]
+            team = teams[g]
+            enemy_targets[team] = np.where((M["hp"] > 0.0) & (M["team"] != team))[0]
 
         """# copy a frame"""
         z_i, z_j, move_factor, effective_range = _terrain_debug_values(
@@ -138,18 +144,12 @@ def _step_through_noframe(M, Z, max_step, teams, enemy_targets, bounds):
     t = 0
     running = True
 
-    zx_index = np.array([0, Z.shape[0]], dtype=np.int64)
-    zy_index = np.array([0, Z.shape[1]], dtype=np.int64)
-    xb = bounds[:2]
-    yb = bounds[2:]
-
     # begin loop
     while (t < max_step) and running:
         """# perform a boundary check."""
         _mathutils.boundary_check2(bounds, M["x"], M["y"])
         # lerp to update all units tile position
-        xtile = np.interp(M["x"], xb, zx_index)
-        ytile = np.interp(M["y"], yb, zy_index)
+        xtile, ytile = _terrain_tiles(M, Z, bounds)
         """# pre-compute the direction derivatives and magnitude/distance for each unit to it's target in batch."""
         dx = M["x"][M["target"]] - M["x"]
         dy = M["y"][M["target"]] - M["y"]
@@ -159,7 +159,8 @@ def _step_through_noframe(M, Z, max_step, teams, enemy_targets, bounds):
         # loop over enemy target lists and update.
         for g in range(teams.shape[0]):
             # update enemy targets.
-            enemy_targets[g] = np.where((M["hp"] > 0.0) & (M["team"] != teams[g]))[0]
+            team = teams[g]
+            enemy_targets[team] = np.where((M["hp"] > 0.0) & (M["team"] != team))[0]
         """# iterate over units and call AI function."""
         running = _loop_units(
             M, round_luck, dists, dx, dy, xtile, ytile, enemy_targets, Z
@@ -204,7 +205,9 @@ def simulate_battle(M, terrain, max_step: int = 100, ret_frames: bool = True):
     Z = np.copy(terrain.Z_)
 
     # initialise enemy targets
-    enemy_targets = typed.List([np.where((M["team"] != T))[0] for T in teams])
+    enemy_targets = typed.List(
+        [np.where(M["team"] != team)[0] for team in range(int(np.max(teams)) + 1)]
+    )
 
     # initilise frames array if returning full set.
     if ret_frames:

@@ -30,10 +30,10 @@ def basic(M, z_i: float, z_j: float, i: int) -> None:
     j = M["target"][i]
     _dmg = M["dmg"][i] * (((z_i - z_j) / 2.0) + 1.0)
     if M["armor"][j] > 0:
-        # deal damage to armor (and a little bit to HP)
+        # Armor absorbs damage first; only overflow reaches HP.
         diff = M["armor"][j] - _dmg
         if diff < 0:
             M["hp"][j] += diff
-        M["armor"][j] -= _dmg
+        M["armor"][j] = max(diff, 0.0)
     else:
         M["hp"][j] -= _dmg

@@ -72,6 +72,8 @@ class Terrain:
         self.res_ = res
         self.form_ = form
         self._Z = None
+        if dtype != "perlin":
+            raise ValueError("'dtype' must be 'perlin'")
         self.dtype = dtype
 
     @property
@@ -138,14 +140,13 @@ class Terrain:
         x : ndarray[float]
             Meshgrid of terrain
         """
-        z_values = self.Z_
-        assert z_values is not None
+        shape = self.Z_.shape if self.Z_ is not None else self._m_size()
         x0, x1, y0, y1 = self.bounds_
         x, y = (
-            np.linspace(x0, x1, z_values.shape[0]),
-            np.linspace(y0, y1, z_values.shape[1]),
+            np.linspace(x0, x1, shape[0]),
+            np.linspace(y0, y1, shape[1]),
         )
-        return np.meshgrid(x, y)
+        return np.meshgrid(x, y, indexing="ij")
 
     def generate(
         self,
@@ -193,4 +194,4 @@ class Terrain:
             )
         elif self.form_ == "contour" or self.form_ == "random":
             X, Y = self.get_grid()
-            ax.contourf(X.T, Y.T, self.Z_, cmap="binary", extent=self.bounds_, **kwargs)
+            ax.contourf(X, Y, self.Z_, cmap="binary", extent=self.bounds_, **kwargs)

@@ -7,6 +7,7 @@ Responsible for creating a Battle object.
 import itertools as it
 import warnings
 from collections.abc import Callable
+from numbers import Integral
 
 import numpy as np
 import pandas as pd
@@ -208,7 +209,6 @@ class Battle:
     @property
     def bounds_(self) -> TUPLE4:
         """Determine the bounds of the fight using the Terrain."""
-        self._is_instantiated()
         return self.T_.bounds_
 
     @bounds_.setter
@@ -278,12 +278,13 @@ class Battle:
 
     @property
     def allegiances_(self):
-        """The list of allegiances."""
+        """The allegiances participating in the current army composition."""
+        teams = np.unique(self._teams)
         return (
             self.db_[["Allegiance", "allegiance_int"]]
-            .set_index("allegiance_int")
+            .loc[lambda frame: frame["allegiance_int"].isin(teams)]
             .drop_duplicates()
-            .squeeze()
+            .set_index("allegiance_int")["Allegiance"]
         )
 
     @property
@@ -299,7 +300,7 @@ class Battle:
             [self.db_.loc[u, "allegiance_int"] for u in self._unit_roster]
         )
 
-    def create_army(self, army_set: list[Composite]):
+    def create_army(self, army_set: list[Composite] | tuple[Composite, ...]):
         """
         Armies are groupings of (<'Unit Type'>, <number of units>). You can
         create one or more of these.
@@ -322,14 +323,36 @@ class Battle:
 
         if not all(isinstance(a, Composite) for a in army_set):
             raise TypeError("all instances within `army_set` must be composites.")
+        if not army_set:
+            raise ValueError("`army_set` must contain at least one Composite")
 
-        self._comps = army_set
+        for composite in army_set:
+            if not isinstance(composite.name, str):
+                raise TypeError("Composite.name must be a string")
+            if isinstance(composite.n, bool) or not isinstance(composite.n, Integral):
+                raise TypeError("Composite.n must be an integer")
+            if composite.n < 1:
+                raise ValueError("Composite.n must be at least 1")
+            if composite.decision_ai not in AI.get_function_names():
+                raise ValueError(
+                    f"unsupported decision_ai: {composite.decision_ai!r}; "
+                    f"expected one of {AI.get_function_names()}"
+                )
+
+        normalized_groups = [
+            (composite.name.lower(), composite.n) for composite in army_set
+        ]
+        _utils.check_groups_in_db(normalized_groups, self.db_)
+
+        self._comps = list(army_set)
         # assign unit roster, n for roster
         self._unit_roster = [u.name.lower() for u in army_set]
         self._unit_n = [u.n for u in army_set]
+        self._M = None
+        self._sim = None
         return self
 
-    def apply_terrain(self, t: str | None = None, res: float = 0.1):
+    def apply_terrain(self, t: str | Terrain | None = None, res: float = 0.1):
         """
         Applies a Z-plane to the map that the Battle is occuring on by creating
         a bsm.Terrain object.
@@ -349,13 +372,13 @@ class Battle:
         """
         self._is_instantiated()
 
-        if t in [None, "grid", "contour"]:
+        if isinstance(t, Terrain):
+            self._T = t
+            return self
+        elif t in [None, "grid", "contour"]:
             # add function to t
             self.T_.res_ = res
             self.T_.form_ = t
-            return self
-        elif isinstance(t, Terrain):
-            self._T = t
             return self
         else:
             raise ValueError("'t' must be [grid, contour, None]")
