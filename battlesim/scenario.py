@@ -1,11 +1,12 @@
 """Reusable, interface-independent battle scenario definitions."""
 
 import tomllib
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 from battlesim._battle import Battle
+from battlesim.contracts import BattleRules, CoverZone, ObjectiveZone
 from battlesim.distrib import Composite, Sampling
 
 
@@ -20,9 +21,16 @@ class ArmySpec:
     init_ai: str = "nearest"
     rolling_ai: str = "nearest"
     decision_ai: str = "aggressive"
+    doctrine_weights: tuple[float, float, float, float] = (0.25, 0.15, 0.5, 0.1)
 
     @classmethod
     def from_mapping(cls, data: dict[str, Any]) -> "ArmySpec":
+        weight_values = tuple(
+            float(value)
+            for value in data.get("doctrine_weights", (0.25, 0.15, 0.5, 0.1))
+        )
+        if len(weight_values) != 4:
+            raise ValueError("doctrine_weights must contain four values")
         return cls(
             name=str(data["name"]),
             count=int(data["count"]),
@@ -33,6 +41,12 @@ class ArmySpec:
             init_ai=str(data.get("init_ai", "nearest")),
             rolling_ai=str(data.get("rolling_ai", "nearest")),
             decision_ai=str(data.get("decision_ai", "aggressive")),
+            doctrine_weights=(
+                weight_values[0],
+                weight_values[1],
+                weight_values[2],
+                weight_values[3],
+            ),
         )
 
     def to_composite(self) -> Composite:
@@ -48,6 +62,7 @@ class ArmySpec:
             init_ai=self.init_ai,
             rolling_ai=self.rolling_ai,
             decision_ai=self.decision_ai,
+            doctrine_weights=self.doctrine_weights,
         )
 
 
@@ -60,6 +75,9 @@ class BattleScenario:
     bounds: tuple[float, float, float, float] = (0.0, 10.0, 0.0, 10.0)
     terrain: str | None = None
     terrain_resolution: float = 0.1
+    seed: int = 0
+    family: str = "default"
+    rules: BattleRules = field(default_factory=BattleRules)
 
     @classmethod
     def from_mapping(
@@ -86,6 +104,31 @@ class BattleScenario:
         if terrain not in (None, "grid", "contour"):
             raise ValueError("scenario terrain must be grid, contour, or omitted")
 
+        rules_data = dict(data.get("rules", {}))
+        objectives = tuple(
+            ObjectiveZone(
+                x=float(item["x"]),
+                y=float(item["y"]),
+                radius=float(item["radius"]),
+                capture_ticks=int(item["capture_ticks"]),
+            )
+            for item in rules_data.pop("objectives", ())
+        )
+        covers = tuple(
+            CoverZone(
+                x=float(item["x"]),
+                y=float(item["y"]),
+                radius=float(item["radius"]),
+                hit_multiplier=float(item.get("hit_multiplier", 0.6)),
+            )
+            for item in rules_data.pop("covers", ())
+        )
+        rules = BattleRules(
+            **rules_data,
+            objectives=objectives,
+            covers=covers,
+        )
+
         return cls(
             armies=armies,
             database=str(database) if database is not None else None,
@@ -97,6 +140,9 @@ class BattleScenario:
             ),
             terrain=terrain,
             terrain_resolution=float(data.get("terrain_resolution", 0.1)),
+            seed=int(data.get("seed", 0)),
+            family=str(data.get("family", "default")),
+            rules=rules,
         )
 
     @classmethod
@@ -106,13 +152,25 @@ class BattleScenario:
             data = tomllib.load(stream)
         return cls.from_mapping(data, base_directory=path.resolve().parent)
 
-    def run(self) -> Battle:
+    def run(self, *, seed: int | None = None) -> Battle:
+        selected_seed = self.seed if seed is None else seed
         battle = (
-            Battle(self.database, bounds=self.bounds, use_tqdm=False)
+            Battle(
+                self.database,
+                bounds=self.bounds,
+                use_tqdm=False,
+                seed=selected_seed,
+                rules=self.rules,
+            )
             if self.database is not None
-            else Battle(bounds=self.bounds, use_tqdm=False)
+            else Battle(
+                bounds=self.bounds,
+                use_tqdm=False,
+                seed=selected_seed,
+                rules=self.rules,
+            )
         )
         battle.create_army([army.to_composite() for army in self.armies])
         battle.apply_terrain(self.terrain, res=self.terrain_resolution)
-        battle.simulate()
+        battle.simulate(seed=selected_seed)
         return battle

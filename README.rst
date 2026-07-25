@@ -32,9 +32,9 @@ Main Features
 Here are just a few things that ``battlesim`` aims to do well:
 
     - Formulate your simulation in a few lines of code from scratch.
-    - Scales up to thousands (and 10s of thousands) of units
+    - Reproducible tactical trials with explicit seeds and versioned results
     - Flexibility: unit values are taken from a data file with flexible AI options
-    - Performance: Just-in-time compiling (JIT) can manage thousands of units
+    - Auditable simultaneous-tick combat plus a retained legacy JIT kernel
     - Visualisation: Animations can be customized to change look-and-feel
 
 Installation
@@ -156,6 +156,17 @@ Secondly, you will need to import the package as:
 
 We recommend using ``bsm`` as a shorthand to reduce the amount of writing out you
 have to do. If you're using Jupyter notebook we also recommend:
+
+.. code-block:: python
+
+    battle = bsm.Battle(seed=42, rules=bsm.BattleRules(max_ticks=200))
+    # Configure armies as before, then:
+    frames = battle.simulate()
+    print(battle.result_.termination_reason)
+    print(battle.result_.winner_team_ids)
+
+``simulate()`` still returns animation frames. The versioned result, seed,
+termination reason, team metrics, and event log are available from ``result_``.
 
 .. code-block:: python
 

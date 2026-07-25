@@ -9,6 +9,10 @@
 - 戦闘ロジックと描画ロジックは分離する
 - 既存 API を壊す変更は慎重に扱う
 - 実験的な仕様は、将来切り替えやすい形で追加する
+- rules version と dataset schema version はコード定数として一元管理する
+- 乱数は subsystem ごとの `numpy.random.Generator` から取得し、グローバル乱数へ
+  暗黙に依存しない
+- 長時間 batch は trial ID により再開・重複排除できるようにする
 
 ## Current Extension Points
 - 戦闘本体の拡張は `battlesim/_battle.py` を入口にする
@@ -22,6 +26,8 @@
 - バグ修正時は、再発防止テストを優先する
 - テスト実行は `uv run pytest -v` を基準にする
 - 静的解析と型チェックは `make check` を基準にする
+- 統計的性質は固定 seed 集合、許容差、sample 数をテスト名または docs に記録する
+- 平行移動・尺度・単調性は成立条件を限定した micro scenario で検証する
 
 ## Documentation Rules
 - 挙動が変わる変更では、関連する `docs/` を更新する

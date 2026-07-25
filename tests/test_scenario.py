@@ -45,3 +45,19 @@ def test_army_count_must_be_positive():
 
     with pytest.raises(ValueError, match="at least 1"):
         army.to_composite()
+
+
+def test_army_spec_preserves_surrogate_doctrine_weights():
+    army = bsm.ArmySpec.from_mapping(
+        {
+            "name": "Clone Trooper",
+            "count": 1,
+            "rolling_ai": "highest_threat",
+            "doctrine_weights": [0.1, 0.2, 0.6, 0.1],
+        }
+    )
+
+    composite = army.to_composite()
+
+    assert composite.rolling_ai == "highest_threat"
+    assert composite.doctrine_weights == (0.1, 0.2, 0.6, 0.1)

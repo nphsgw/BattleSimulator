@@ -81,68 +81,110 @@ def _terrain_debug_values(M, Z, xtile, ytile):
 
 
 @njit
-def _loop_units(M, luck, dists, dx, dy, xt, yt, enemy_targets, Z_m):
+def _loop_units(
+    M, action_luck, hit_luck, dists, dx, dy, xt, yt, enemy_targets, Z_m, bounds
+):
     """Loops over the units and executes the function."""
-    running = True
-
     for i in range(M.shape[0]):
         if M["hp"][i] > 0.0:
             # fetch the function 'hit_and_run', 'aggressive' in `_ai.py`, etc.
             # AI-based decision for attack/defend.
             k = M["ai_func_index"][i]
             if k == 0:
-                running = AI.aggressive(
-                    M, luck, dists, dx, dy, xt, yt, enemy_targets[M["team"][i]], Z_m, i
+                AI.aggressive(
+                    M,
+                    action_luck,
+                    hit_luck,
+                    dists,
+                    dx,
+                    dy,
+                    xt,
+                    yt,
+                    enemy_targets[M["team"][i]],
+                    Z_m,
+                    i,
                 )
             elif k == 1:
-                running = AI.hit_and_run(
-                    M, luck, dists, dx, dy, xt, yt, enemy_targets[M["team"][i]], Z_m, i
+                AI.hit_and_run(
+                    M,
+                    action_luck,
+                    hit_luck,
+                    dists,
+                    dx,
+                    dy,
+                    xt,
+                    yt,
+                    enemy_targets[M["team"][i]],
+                    Z_m,
+                    i,
                 )
-    return running
+            M["x"][i] = min(max(M["x"][i], bounds[0]), bounds[1])
+            M["y"][i] = min(max(M["y"][i], bounds[2]), bounds[3])
+
+
+@njit
+def _battle_continues(M, teams):
+    living_teams = 0
+    for team in teams:
+        if np.any((M["hp"] > 0.0) & (M["team"] == team)):
+            living_teams += 1
+    return living_teams > 1
 
 
 @njit
 def _step_through_update(M, Z, max_step, teams, enemy_targets, bounds, frames):
     t = 0
-    running = True
+    running = _battle_continues(M, teams)
 
-    # begin loop
+    _mathutils.boundary_check2(bounds, M["x"], M["y"])
+    xtile, ytile = _terrain_tiles(M, Z, bounds)
+    dx = M["x"][M["target"]] - M["x"]
+    dy = M["y"][M["target"]] - M["y"]
+    dists = _mathutils.euclidean_distance(dx, dy)
+    z_i, z_j, move_factor, effective_range = _terrain_debug_values(M, Z, xtile, ytile)
+    _copy_frame(frames, M, dx, dy, dists, z_i, z_j, effective_range, move_factor, 0)
+
     while (t < max_step) and running:
-        """# perform a boundary check."""
-        _mathutils.boundary_check2(bounds, M["x"], M["y"])
-        # iterate through and cast every tile element from interpolation.
-        xtile, ytile = _terrain_tiles(M, Z, bounds)
-        """# pre-compute the direction derivatives and magnitude/distance for each unit to it's target in batch."""
-        dx = M["x"][M["target"]] - M["x"]
-        dy = M["y"][M["target"]] - M["y"]
-        dists = _mathutils.euclidean_distance(dx, dy)
-        """# pre-compute the 'luck' of each unit with random numbers."""
-        round_luck = np.random.rand(M.shape[0])
+        action_luck = np.random.rand(M.shape[0])
+        hit_luck = np.random.rand(M.shape[0])
         # loop over enemy target lists and update.
         for g in range(teams.shape[0]):
             # update enemy targets.
             team = teams[g]
             enemy_targets[team] = np.where((M["hp"] > 0.0) & (M["team"] != team))[0]
 
-        """# copy a frame"""
+        _loop_units(
+            M,
+            action_luck,
+            hit_luck,
+            dists,
+            dx,
+            dy,
+            xtile,
+            ytile,
+            enemy_targets,
+            Z,
+            bounds,
+        )
+        t += 1
+        running = _battle_continues(M, teams)
+
+        xtile, ytile = _terrain_tiles(M, Z, bounds)
+        dx = M["x"][M["target"]] - M["x"]
+        dy = M["y"][M["target"]] - M["y"]
+        dists = _mathutils.euclidean_distance(dx, dy)
         z_i, z_j, move_factor, effective_range = _terrain_debug_values(
             M, Z, xtile, ytile
         )
         _copy_frame(frames, M, dx, dy, dists, z_i, z_j, effective_range, move_factor, t)
-
-        """# iterate over units and call AI function."""
-        running = _loop_units(
-            M, round_luck, dists, dx, dy, xtile, ytile, enemy_targets, Z
-        )
-        t += 1
-    return t
+    return t + 1
 
 
 @njit
 def _step_through_noframe(M, Z, max_step, teams, enemy_targets, bounds):
     """steps through the simulation."""
     t = 0
-    running = True
+    running = _battle_continues(M, teams)
 
     # begin loop
     while (t < max_step) and running:
@@ -154,18 +196,29 @@ def _step_through_noframe(M, Z, max_step, teams, enemy_targets, bounds):
         dx = M["x"][M["target"]] - M["x"]
         dy = M["y"][M["target"]] - M["y"]
         dists = _mathutils.euclidean_distance(dx, dy)
-        """# pre-compute the 'luck' of each unit with random numbers."""
-        round_luck = np.random.rand(M.shape[0])
+        action_luck = np.random.rand(M.shape[0])
+        hit_luck = np.random.rand(M.shape[0])
         # loop over enemy target lists and update.
         for g in range(teams.shape[0]):
             # update enemy targets.
             team = teams[g]
             enemy_targets[team] = np.where((M["hp"] > 0.0) & (M["team"] != team))[0]
         """# iterate over units and call AI function."""
-        running = _loop_units(
-            M, round_luck, dists, dx, dy, xtile, ytile, enemy_targets, Z
+        _loop_units(
+            M,
+            action_luck,
+            hit_luck,
+            dists,
+            dx,
+            dy,
+            xtile,
+            ytile,
+            enemy_targets,
+            Z,
+            bounds,
         )
         t += 1
+        running = _battle_continues(M, teams)
     return t
 
 

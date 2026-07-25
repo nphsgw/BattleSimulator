@@ -9,6 +9,24 @@ from . import (  # noqa: F401
     terra,
 )
 from ._battle import Battle  # noqa: F401
+from ._version import __version__  # noqa: F401
+from .contracts import (  # noqa: F401
+    BattleEvent,
+    BattleResult,
+    BattleRules,
+    CoverZone,
+    ObjectiveZone,
+    TeamResult,
+    TerminationReason,
+)
+from .dataset import (  # noqa: F401
+    expand_parameter_sweep,
+    export_results,
+    result_to_record,
+    run_batch,
+    scenario_family_partition,
+    wilson_interval,
+)
 from .distrib import Composite, Sampling  # noqa: F401
 from .plot import (  # noqa: F401
     FrameView,
@@ -23,8 +41,14 @@ from .plot import (  # noqa: F401
 )
 from .scenario import ArmySpec, BattleScenario  # noqa: F401
 from .terra import Terrain  # noqa: F401
+from .validation import (  # noqa: F401
+    ValidationIssue,
+    monte_carlo_summary,
+    sensitivity_analysis,
+    surrogate_frame,
+    validate_results,
+)
 
-__version__ = "0.3.7"
 __name__ = "battlesim"  # noqa: W0622
 __doc__ = """
 battlesim - Modelling and animating simulated battles between units in Python.

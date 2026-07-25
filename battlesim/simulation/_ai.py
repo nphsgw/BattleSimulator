@@ -13,7 +13,15 @@ from numba import njit
 from numpy.typing import NDArray
 
 from . import _damage, _hit, _move
-from ._target import close_weak, nearest, random
+from ._target import (
+    close_weak,
+    focus_fire,
+    highest_threat,
+    nearest,
+    objective_priority,
+    random,
+    weakest,
+)
 
 
 def get_function_names() -> list[str]:
@@ -34,8 +42,16 @@ def _select_enemy(M, enemies: NDArray[np.uint], i: int) -> bool:
                 t = nearest(M, alive_enemies, i)
             elif target_ai == 1:
                 t = random(M, alive_enemies, i)
-            else:
+            elif target_ai == 2:
                 t = close_weak(M, alive_enemies, i)
+            elif target_ai == 3:
+                t = weakest(M, alive_enemies, i)
+            elif target_ai == 4:
+                t = highest_threat(M, alive_enemies, i)
+            elif target_ai == 5:
+                t = focus_fire(M, alive_enemies, i)
+            else:
+                t = objective_priority(M, alive_enemies, i)
             if t != -1:
                 M["target"][i] = t
                 return True
@@ -67,7 +83,8 @@ def _refresh_target_geometry(M, dists, delta_x, delta_y, i: int) -> None:
 @njit
 def aggressive(
     M,
-    luck: NDArray[np.float64],
+    action_luck: NDArray[np.float64],
+    hit_luck: NDArray[np.float64],
     dists: NDArray[np.float64],
     delta_x: NDArray[np.float64],
     delta_y: NDArray[np.float64],
@@ -89,14 +106,16 @@ def aggressive(
         z_j = terrain_height[math.trunc(xtile[j]), math.trunc(ytile[j])]
         r_i = M["range"][i] * ((z_i**2 / 3.0) + 1.0)
         # if not in range, move towards target, or hit a chance (5%) and move forward anyway.
-        if dists[i] > r_i or luck[i] < 0.05:
+        if dists[i] > r_i:
             # move unit towards attacking enemy.
-            _move.to_enemy(M, delta_x, delta_y, dists, z_i, i)
+            _move.to_enemy(M, delta_x, delta_y, dists, z_i, i, r_i)
+        elif action_luck[i] < 0.05:
+            _move.to_enemy(M, delta_x, delta_y, dists, z_i, i, 0.0)
         else:
             # calculate the chance of hitting the opponent
             h_chance = _hit.basic_chance(M, dists, r_i, i)
             # if hit chance overcomes round luck.. deal damage to HP.
-            if h_chance > luck[i]:
+            if h_chance > hit_luck[i]:
                 _damage.basic(M, z_i, z_j, i)
         return True
     else:
@@ -106,7 +125,8 @@ def aggressive(
 @njit
 def hit_and_run(
     M,
-    luck: NDArray[np.float64],
+    action_luck: NDArray[np.float64],
+    hit_luck: NDArray[np.float64],
     dists: NDArray[np.float64],
     delta_x: NDArray[np.float64],
     delta_y: NDArray[np.float64],
@@ -134,7 +154,7 @@ def hit_and_run(
             # if we're out of range, move towards
             if dists[i] > range_i:
                 # move towards unit.
-                _move.to_enemy(M, delta_x, delta_y, dists, z_i, i)
+                _move.to_enemy(M, delta_x, delta_y, dists, z_i, i, range_i)
                 return True
             # else if the enemy is in range, back off
             elif dists[i] < range_j:
@@ -145,14 +165,15 @@ def hit_and_run(
                 # so we're in range, the enemy is not, attack.
                 h_chance = _hit.basic_chance(M, dists, range_i, i)
 
-                if h_chance > luck[i]:
+                if h_chance > hit_luck[i]:
                     _damage.basic(M, z_i, z_j, i)
                 return True
         else:
             # otherwise just perform an 'aggressive' model.
             return aggressive(
                 M,
-                luck,
+                action_luck,
+                hit_luck,
                 dists,
                 delta_x,
                 delta_y,

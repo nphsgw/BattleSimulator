@@ -35,9 +35,11 @@ class Sampling:
         """Returns the np.random function associated with the name"""
         return getattr(np.random, self.name)
 
-    def sample(self, n):
+    def sample(self, n, rng=None):
         """Samples a 1d from random."""
-        return self.f(*self.args, size=(n,))
+        if rng is None:
+            return self.f(*self.args, size=(n,))
+        return getattr(rng, self.name)(*self.args, size=(n,))
 
     def __repr__(self):
         return f"Sampling('{self.name}', {self.args})"

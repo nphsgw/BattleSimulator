@@ -44,13 +44,13 @@ def test_retargeting_ignores_enemies_killed_earlier_in_tick():
 
 
 def test_retargeting_uses_units_rolling_ai():
-    matrix = _matrix(4)
+    matrix = _matrix(5)
     matrix["target"][0] = 1
-    matrix["hp"] = [10.0, 0.0, 100.0, 1.0]
-    matrix["x"] = [0.0, 0.1, 1.0, 1.5]
+    matrix["hp"] = [10.0, 0.0, 100.0, 1.0, 100.0]
+    matrix["x"] = [0.0, 0.1, 1.0, 2.0, 3.0]
     matrix["target_ai_func_index"][0] = 2
 
-    selected = _ai._select_enemy(matrix, np.array([1, 2, 3]), 0)
+    selected = _ai._select_enemy(matrix, np.array([1, 2, 3, 4]), 0)
 
     assert selected is True
     assert matrix["target"][0] == 3
@@ -81,6 +81,7 @@ def test_aggressive_refreshes_geometry_after_retargeting():
     _ai.aggressive(
         matrix,
         np.ones(3),
+        np.ones(3),
         dists,
         delta_x,
         delta_y,
@@ -105,6 +106,7 @@ def test_hit_and_run_uses_the_documented_effective_range_formula():
 
     _ai.hit_and_run(
         matrix,
+        np.ones(2),
         np.ones(2),
         np.array([3.0, 3.0]),
         np.array([3.0, -3.0]),
@@ -159,8 +161,10 @@ def test_units_act_in_index_order_and_dead_units_skip_their_turn():
         np.zeros(2),
         np.zeros(2),
         np.zeros(2),
+        np.zeros(2),
         enemy_targets,
         np.zeros((1, 1)),
+        np.array([-1.0, 1.0, -1.0, 1.0]),
     )
 
     assert matrix["hp"][0] == 1.0
@@ -190,4 +194,68 @@ def test_simulation_supports_non_contiguous_team_ids():
 
     frames = simulate_battle(matrix, terrain, max_step=1)
 
-    assert frames.shape == (1, 2)
+    assert frames.shape == (2, 2)
+
+
+def test_aggressive_uses_independent_action_and_hit_randomness():
+    matrix = _matrix(2)
+    matrix["target"] = [1, 0]
+    matrix["acc"][0] = 0.03
+    matrix["dmg"][0] = 1.0
+    dists = np.zeros(2)
+
+    _ai.aggressive(
+        matrix,
+        np.full(2, 0.5),
+        np.full(2, 0.02),
+        dists,
+        np.zeros(2),
+        np.zeros(2),
+        np.zeros(2),
+        np.zeros(2),
+        np.array([1]),
+        np.zeros((1, 1)),
+        0,
+    )
+
+    assert matrix["hp"][1] == 9.0
+
+
+def test_movement_stops_at_effective_range_instead_of_overshooting():
+    matrix = _matrix(2)
+    matrix["target"] = [1, 0]
+    matrix["x"] = [0.0, 5.0]
+    matrix["range"][0] = 1.0
+    matrix["speed"][0] = 10.0
+
+    _ai.aggressive(
+        matrix,
+        np.ones(2),
+        np.ones(2),
+        np.array([5.0, 5.0]),
+        np.array([5.0, -5.0]),
+        np.zeros(2),
+        np.zeros(2),
+        np.zeros(2),
+        np.array([1]),
+        np.zeros((1, 1)),
+        0,
+    )
+
+    assert matrix["x"][0] == 4.0
+
+
+def test_max_step_frame_contains_final_updated_state():
+    matrix = _matrix(2)
+    matrix["team"] = [0, 1]
+    matrix["target"] = [1, 0]
+    matrix["x"] = [0.0, 2.0]
+    matrix["range"] = 0.1
+    matrix["speed"] = [1.0, 0.0]
+    terrain = bsm.Terrain((-5.0, 5.0, -5.0, 5.0), 1.0, None).generate()
+
+    frames = simulate_battle(matrix, terrain, max_step=1)
+
+    assert frames.shape == (2, 2)
+    assert frames["x"][-1, 0] == matrix["x"][0]
+    assert frames["x"][-1, 0] > frames["x"][0, 0]

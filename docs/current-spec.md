@@ -33,6 +33,12 @@
 - `use_tqdm`
   型: `bool`
   内容: `simulate_k()` の進捗表示に `tqdm` を使うかどうか
+- `seed`
+  型: `int | None`
+  内容: 配置、地形、target、命中などの名前付き乱数系列のroot seed
+- `rules`
+  型: `BattleRules | None`
+  内容: tick、終了条件、空間ルール、objectiveを含むrules version 1設定
 
 主な公開メソッド:
 - `create_army(army_set)`
@@ -42,9 +48,9 @@
   地形の見た目または `Terrain` オブジェクトを設定する
 - `set_bounds(bounds)`
   戦場範囲を設定する
-- `simulate(verbose=0)`
+- `simulate(verbose=0, *, seed=None, rules=None)`
   1 回の戦闘を実行し、フレーム列を返す
-- `simulate_k(k=10)`
+- `simulate_k(k=10, *, seed=None, randomize=("combat",))`
   複数回の戦闘を実行し、各陣営の残存数を DataFrame で返す
 - `sim_jupyter(func=quiver_fight, create_html=False)`
   Jupyter 向けアニメーションオブジェクトまたは HTML を返す
@@ -58,6 +64,10 @@
   シミュレーション用の内部構造化 NumPy 配列
 - `sim_`
   直近のシミュレーション結果
+- `result_`
+  直近のversion付き `BattleResult`
+- `results_`
+  `simulate_k()` が生成した `BattleResult` のtuple
 - `T_`
   現在の `Terrain`
 - `composition_`
@@ -109,7 +119,7 @@ NumPy の乱数分布をラップするクラス。
 
 主な動作:
 - `Sampling(name, *args)` で分布名と引数を保持する
-- `sample(n)` で長さ `n` の 1 次元配列を返す
+- `sample(n, rng=None)` で長さ `n` の 1 次元配列を返す
 - `Composite` の初期座標生成に使う
 
 ### `Terrain`
@@ -196,7 +206,7 @@ NumPy の乱数分布をラップするクラス。
 - `acc`
   命中率
 - `dodge`
-  回避率
+  回避率。後方互換列 `Miss` を 100 で割った値
 - `utype`
   ユニット種別 ID
 - `team`
@@ -205,6 +215,12 @@ NumPy の乱数分布をラップするクラス。
   行動 AI の整数 ID
 - `target_ai_func_index`
   対象死亡後に使うターゲット再選択 AI の整数 ID
+- `stable_id`
+  Composite登録順に依存しないtarget tie-break、event actor ID
+- `cooldown`, `attack_interval`, `radius`, `move_factor`
+  攻撃間隔と円形占有半径
+- `threat_*_weight`
+  distance、durability、expected damage、objective importanceのdoctrine重み
 
 ### Team And Group Semantics
 - `team` は陣営を表す
@@ -220,15 +236,16 @@ NumPy の乱数分布をラップするクラス。
 2. 2 陣営以上あるか確認する
 3. `M_` を再構築する
 4. 地形を生成する
-5. `simulate_battle()` を呼ぶ
-6. フレーム列を `sim_` に保存して返す
+5. rules version 1 の `simulate_tactical()` を呼ぶ
+6. フレーム列を `sim_`、構造化結果を `result_` に保存する
+7. 従来どおりフレーム列を返す
 
 ### Repeated Simulation
 `simulate_k(k)` は:
-1. `M_` を初期状態へ構築する
-2. 地形を生成する
-3. 同一条件で `k` 回戦闘を繰り返す
-4. 各陣営の生存数を DataFrame で返す
+1. root seedからtrial seedを決定論的に導出する
+2. `randomize` に指定された配置、地形、combatだけをtrialごとに再生成する
+3. `k` 回戦闘を繰り返し、構造化結果を `results_` に保存する
+4. 互換性のため、各陣営の生存数を DataFrame で返す
 
 現仕様では、`simulate_k()` は各試行の勝敗ラベルではなく、各陣営の残存数を返す。
 
@@ -245,15 +262,30 @@ NumPy の乱数分布をラップするクラス。
 - `nearest`
   最も近い敵を選ぶ
 - `close_weak`
-  距離と HP を混ぜて評価し、近くて弱い敵を選ぶ
+  候補内で正規化した距離と残存耐久力（HP + armor）を混ぜて、
+  近くて倒しやすい敵を選ぶ
+- `weakest`
+  残存HPとarmorが最小の敵を選ぶ
+- `highest_threat`
+  正規化したdistance、durability、expected damage、objective importanceと
+  Compositeのdoctrine重みで選ぶ
+- `focus_fire`
+  味方が最も多くtarget中の敵を優先する
+- `objective_priority`
+  objectiveに近い敵を優先する
 
 ### Group-Level Initial Targeting
 グループ単位の初期ターゲット選択関数:
 - `global_random`
 - `global_nearest`
 - `global_close_weak`
+- `global_weakest`
+- `global_highest_threat`
+- `global_focus_fire`
+- `global_objective_priority`
 
-各 Composite の `init_ai` に対応する global 関数を初期ターゲット割り当てに使う。
+これらはlegacy低レベルAPIとして維持する。rules version 1 の`Battle`は
+同じ方針をstable ID tie-break付きの決定論的初期化処理で適用する。
 
 ### Current Runtime Behavior
 - 戦闘中に現在ターゲットが死亡していたら `_select_enemy()` で再選択する
@@ -261,6 +293,8 @@ NumPy の乱数分布をラップするクラス。
 - 候補は再選択時点で生存している敵に限定される
 - 再選択した tick では、新しいターゲットへの距離、方向、高低差を使って行動する
 - データベース全体で割り当てられた陣営 ID が非連続でも動作する
+- rules version 1 の `nearest` は暗黙のdistance noiseを加えない
+- 同点時は入力順でなくstable unit IDで決定する
 
 ## AI Specification
 
@@ -272,20 +306,21 @@ NumPy の乱数分布をラップするクラス。
 `defensive` は定義されているが未実装で、`NotImplementedError` を送出する。
 
 ### `aggressive`
-基本方針:
+rules version 1:
 - 射程外なら対象へ接近する
-- ただし 5% の確率で、射程内でも前進側の挙動を取る
-- 射程内なら命中判定を行い、成功時にダメージを与える
+- 全unitの移動と衝突解決後、射程・射線・命中を判定する
+
+legacy低レベルAIでは、5%の強制前進判定と命中判定に独立乱数を使う。
 
 ### `hit_and_run`
-基本方針:
+rules version 1:
 - 自分の速度と射程が相手より有利なら hit-and-run を行う
 - 射程外なら接近
 - 相手の射程内に入りすぎたら後退
-- 自分だけが射程内なら攻撃
+- 境界で直接後退できなければ横移動を試し、移動後に射程内なら攻撃する
 - 優位でない場合は `aggressive` にフォールバックする
-- 射程の地形補正式は `aggressive` と同じ
-  `range * ((z^2 / 3) + 1)` を使う
+
+legacy低レベルAIでは従来の絶対標高による実効射程式を維持する。
 
 ## Movement Specification
 
@@ -298,11 +333,13 @@ NumPy の乱数分布をラップするクラス。
 - ユニットの速度
 - 地形による移動補正
 
-### Terrain Effect On Movement
-移動量は概ね次の形で補正される。
-- `speed * (1 - z_i / 2)`
+対象へ接近する移動量は射程境界を越えない。全unitの移動線分を比較し、
+終点が離れていても途中で交差するunitを接触時刻の直前で停止させる。
 
-つまり高所ほど移動速度が落ちる方向の補正が入る。
+### Terrain Effect On Movement
+rules version 1では、移動元と移動先の標高差が上りの場合だけ
+`1 / (1 + rise)` を移動量へ掛ける。legacy低レベルAIでは
+`speed * (1 - z_i / 2)` を維持する。
 
 ## Hit And Damage Specification
 
@@ -319,11 +356,22 @@ NumPy の乱数分布をラップするクラス。
 攻撃判定は実効射程内でのみ行われるため、距離係数は射手直上で 1、
 射程限界で 0.5 となる。計算結果は `[0, 1]` へ制限する。
 
+データベース列 `Miss` は歴史的な列名として維持する。
+値はそのユニットが攻撃対象になったときの回避率であり、攻撃者自身の
+ミス率ではない。
+
 ### Tick Resolution
-- 生存ユニットは unit index の昇順に行動する
-- 移動、命中、ダメージは各ユニットの行動時に即時反映する
-- 先行ユニットに倒されたユニットは、その tick では行動しない
-- 現行の unit index 順を既定 initiative として扱う
+- tick開始時のsnapshotから全unitのtarget、移動、攻撃予定を計算する
+- 移動予定を一括反映し、unit radiusによる位置競合を解消する
+- 移動後位置から射程とline-of-sightを判定する
+- 命中したdamageは予約し、tick終了時に対象単位で合算して適用する
+- tick開始時に生存していたunitは、同tick内で攻撃されても予定攻撃を実行する
+- 配列順でなくstable unit ID順に乱数keyを割り当てるため、相打ちと登録順不変性を表現できる
+- 互換用の低レベル `_loop_units()` はlegacy逐次方式のまま残る
+
+### Attack Timing
+- 任意列 `Attack Interval` を攻撃間隔tick数として使い、省略時は1
+- 攻撃後はcooldownを設定し、0になったtickに再攻撃できる
 
 ### Damage
 基本ダメージは地形高低差補正を含む。
@@ -363,16 +411,24 @@ NumPy の乱数分布をラップするクラス。
 ### Terrain Effect Summary
 地形は以下へ影響する。
 - 移動速度
-- 射程
+- line-of-sight
 - ダメージ
 
-現行実装では、AI 内で高低差をもとに射程やダメージが補正される。
+rules version 1 の移動補正は移動先への上り勾配から計算する。
+中間地形が視線より高い場合は射撃できない。`CoverZone` 内のtargetには
+指定された命中率倍率を適用する。
+legacy低レベルAIでは従来の絶対標高による射程・移動補正を維持する。
 戦場 bounds の最大座標を含め、座標は常に有効な地形 tile index へ写像される。
 
 ## Output Specification
 
 ### `simulate()`
 戻り値はフレーム列の構造化 NumPy 配列。
+
+- frame 0 は tick 解決前の初期状態
+- 以後は各 tick 解決後の状態
+- 最大 tick へ到達した場合も最後の更新後状態を含む
+- したがって最大フレーム数は `max_step + 1`
 
 主な列:
 - `x`
@@ -389,6 +445,7 @@ NumPy の乱数分布をラップするクラス。
 - `move_factor`
 - `effective_range`
 - `damage_factor`
+- `density`
 
 ### `simulate_k()`
 戻り値は `pandas.DataFrame`。
@@ -398,6 +455,25 @@ NumPy の乱数分布をラップするクラス。
 
 値:
 - 各試行終了時の生存ユニット数
+
+構造化結果は `results_` に保存され、seed、trial ID、終了理由、各teamの
+残存戦力とcombat metricsを取得できる。
+
+### `BattleResult`
+- `scenario_id`, `trial_id`, seedと各version
+- tick数、`termination_reason`, 0件以上の`winner_team_ids`
+- team別の初期・残存unit数、HP、armor、damage、shot、hit、kill、移動距離
+- 高所・cover・objective占有時間、空間的分散、損耗交換比
+- fixed-lengthのscenario input featuresとtrialごとのrandomized subsystem
+- `move`, `shot`, `hit`, `damage`, `kill`, `target`, `objective` event
+
+### Dataset And Validation
+- `run_batch()` はscenario familyごとのtrialを実行し、trial IDで再開・重複排除する
+- `export_results()` はCSV、JSONL、Parquetへversion付き集約値を保存する
+- `scenario_family_partition()` はfamilyをtrain/validation/test/OODへ固定分割する
+- `wilson_interval()` と `monte_carlo_summary()` は勝率の不確実性を返す
+- `validate_results()` はversion混在、重複、不正な状態量を検出する
+- `sensitivity_analysis()` と `surrogate_frame()` は初期の代理モデル検証・入力を提供する
 
 ## Plotting And Export
 
@@ -531,9 +607,20 @@ UI は戦闘ロジックや描画ロジックを実装せず、`BattleScenario` 
   未対応の `init_ai`, `rolling_ai`, `decision_ai` を拒否する
 - `Terrain.res_` は `float` で、極小値未満は拒否する
 - ユニットデータには必須列がそろっている必要がある
+- unit 名は空でなく、大文字小文字を無視して一意である必要がある
+- unit 数値列は有限の数値である必要がある
+- `HP > 0`, `Armor >= 0`, `Damage >= 0`
+- `Accuracy` と `Miss` は 0..100
+- `Movement Speed >= 0`, `Range > 0`
+- 任意の `Attack Interval >= 1`, `Radius > 0`
 
 ## Known Limitations
 - `AI.defensive` は未実装
+- rules version 1 のcollisionは円形unitのsoft separationであり、経路計画ではない
+- line-of-sightは地形標本化であり、建物meshや弾丸飛翔は扱わない
+- 初期の代理モデル出力は固定長集約値で、sequence/graph表現は未実装
+- rules version 1 のreference kernelは監査可能性を優先し、legacy Numba kernelほど
+  大規模unit数へ最適化されていない
 - ノートブックや教材コードには本体仕様と一致しない説明が残る可能性がある
 - 仕様文書は現実装に基づくため、将来変更時はこの文書も更新が必要
 

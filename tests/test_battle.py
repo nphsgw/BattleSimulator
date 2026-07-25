@@ -178,15 +178,15 @@ def test_presim_expands_bounds_only_to_contain_outside_units(battle: bsm.Battle)
 
 def test_init_ai_controls_initial_target_selection():
     database = {
-        "Name": ["Shooter", "Close Strong", "Far Weak"],
-        "Allegiance": ["A", "B", "B"],
-        "HP": [10, 100, 1],
-        "Armor": [0, 0, 0],
-        "Damage": [1, 1, 1],
-        "Accuracy": [0, 0, 0],
-        "Miss": [0, 0, 0],
-        "Movement Speed": [0.1, 0.1, 0.1],
-        "Range": [1, 1, 1],
+        "Name": ["Shooter", "Close Strong", "Middle Weak", "Far Strong"],
+        "Allegiance": ["A", "B", "B", "B"],
+        "HP": [10, 100, 1, 100],
+        "Armor": [0, 0, 0, 0],
+        "Damage": [1, 1, 1, 1],
+        "Accuracy": [0, 0, 0, 0],
+        "Miss": [0, 0, 0, 0],
+        "Movement Speed": [0.1, 0.1, 0.1, 0.1],
+        "Range": [1, 1, 1, 1],
     }
     battle = bsm.Battle(database, use_tqdm=False)
     battle.create_army(
@@ -198,7 +198,8 @@ def test_init_ai_controls_initial_target_selection():
                 init_ai="close_weak",
             ),
             bsm.Composite("Close Strong", 1, pos_dist=_FixedSampling(2.0)),
-            bsm.Composite("Far Weak", 1, pos_dist=_FixedSampling(3.0)),
+            bsm.Composite("Middle Weak", 1, pos_dist=_FixedSampling(3.0)),
+            bsm.Composite("Far Strong", 1, pos_dist=_FixedSampling(4.0)),
         ]
     )
 
@@ -206,3 +207,74 @@ def test_init_ai_controls_initial_target_selection():
 
     assert battle.M_ is not None
     assert battle.M_["target"][0] == 2
+
+
+def _valid_database() -> dict[str, list[object]]:
+    return {
+        "Name": ["A"],
+        "Allegiance": ["Team A"],
+        "HP": [10],
+        "Armor": [0],
+        "Damage": [1],
+        "Accuracy": [50],
+        "Miss": [25],
+        "Movement Speed": [0.1],
+        "Range": [1],
+    }
+
+
+@pytest.mark.parametrize(
+    ("column", "value", "message"),
+    [
+        ("HP", 0, "HP"),
+        ("Armor", -1, "Armor"),
+        ("Damage", -1, "Damage"),
+        ("Accuracy", 101, "Accuracy"),
+        ("Miss", -1, "Miss"),
+        ("Movement Speed", -0.1, "Movement Speed"),
+        ("Range", 0, "Range"),
+        ("Damage", np.nan, "finite"),
+        ("Damage", np.inf, "finite"),
+        ("Damage", True, "boolean"),
+    ],
+)
+def test_database_rejects_invalid_numeric_values(column, value, message):
+    database = _valid_database()
+    database[column] = [value]
+
+    with pytest.raises(ValueError, match=message):
+        bsm.Battle(database)
+
+
+def test_database_rejects_empty_or_duplicate_names():
+    empty_name = _valid_database()
+    empty_name["Name"] = [""]
+    with pytest.raises(ValueError, match="non-empty"):
+        bsm.Battle(empty_name)
+
+    duplicate_name = {key: values * 2 for key, values in _valid_database().items()}
+    duplicate_name["Name"] = ["Unit", "unit"]
+    with pytest.raises(ValueError, match="unique"):
+        bsm.Battle(duplicate_name)
+
+
+def test_miss_column_is_loaded_as_target_dodge():
+    database = {key: values * 2 for key, values in _valid_database().items()}
+    database["Name"] = ["A", "B"]
+    database["Allegiance"] = ["Team A", "Team B"]
+    database["Miss"] = [25, 0]
+    battle = bsm.Battle(
+        database,
+        bounds=(-10.0, 10.0, -10.0, 10.0),
+    )
+    battle.create_army(
+        [
+            bsm.Composite("A", 1),
+            bsm.Composite("B", 1),
+        ]
+    )
+
+    battle._presim()
+
+    assert battle.M_ is not None
+    assert battle.M_["dodge"][0] == 0.25

@@ -154,6 +154,8 @@ class Terrain:
             Callable[[NDArray[np.float64], NDArray[np.float64]], NDArray[np.float64]]
             | None
         ) = None,
+        *,
+        rng: np.random.Generator | None = None,
     ):
         """
         Generates the terra using a function.
@@ -173,7 +175,7 @@ class Terrain:
             return self
         if f is None:
             dx, dy = self._m_size()
-            self._Z = minmax(create_perlin_map(dx, dy, scale=dx // 3))
+            self._Z = minmax(create_perlin_map(dx, dy, scale=max(dx // 3, 1), rng=rng))
         elif callable(f):
             self._Z = minmax(f(*self.get_grid()))
         else:

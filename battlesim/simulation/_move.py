@@ -32,8 +32,9 @@ def to_enemy(
     delta_x: NDArray[np.float64],
     delta_y: NDArray[np.float64],
     dist: NDArray[np.float64],
-    z_i: NDArray[np.float64],
+    z_i: float,
     i: int,
+    stop_distance: float,
 ) -> None:
     """
     Updates M[x,y] towards the target.
@@ -43,13 +44,15 @@ def to_enemy(
     The update speed is calculated as:
         s_i * (dd_i / m_ij) * (1 - (Z_i / 2))
     """
-    # modify dist to prevent it being zero
-    dist_i = dist[i] + 1e-12
+    dist_i = dist[i]
+    if dist_i <= stop_distance:
+        return
     # cache the terra + speed influences.
     terrain_tick = (1.0 - (z_i / 2.0)) * M["speed"][i]
+    step = min(terrain_tick, dist_i - stop_distance)
     # compute normed directional derivative and update.
-    M["x"][i] += (delta_x[i] / dist_i) * terrain_tick
-    M["y"][i] += (delta_y[i] / dist_i) * terrain_tick
+    M["x"][i] += (delta_x[i] / dist_i) * step
+    M["y"][i] += (delta_y[i] / dist_i) * step
 
 
 @njit
@@ -58,7 +61,7 @@ def from_enemy(
     delta_x: NDArray[np.float64],
     delta_y: NDArray[np.float64],
     dist: NDArray[np.float64],
-    z_i: NDArray[np.float64],
+    z_i: float,
     i: int,
 ) -> None:
     """

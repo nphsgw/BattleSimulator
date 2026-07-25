@@ -173,10 +173,11 @@ view model は UI framework に依存させず、固定 frame を使った単体
   現在 target 足元の地形高さ
 - `move_factor`
   地形だけが移動へ与える倍率
-  現行実装では `1 - z / 2`
+  rules version 1では上り勾配に対する `1 / (1 + rise)`。
+  legacy frameでは `1 - z / 2`
 - `effective_range`
-  地形補正込みの実効射程
-  現行実装では `range * ((z^2 / 3) + 1)`
+  現在rulesで攻撃判定に使った実効射程
+  rules version 1では `range`、legacy frameでは `range * ((z^2 / 3) + 1)`
 - `damage_factor`
   高低差による与ダメージ倍率
   現行実装では `((z - target_z) / 2) + 1`

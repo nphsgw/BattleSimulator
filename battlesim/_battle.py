@@ -4,6 +4,8 @@
 Responsible for creating a Battle object.
 """
 
+import hashlib
+import json
 import warnings
 from collections.abc import Callable
 from numbers import Integral
@@ -12,15 +14,18 @@ import numpy as np
 import pandas as pd
 from matplotlib import colors
 
+from battlesim.contracts import BattleResult, BattleRules
 from battlesim.plot._simplot import quiver_fight
+from battlesim.randomness import RandomStreams, derive_trial_seed
+from battlesim.simulation._tactical import simulate_tactical
 from battlesim.terra import Terrain
 
 from . import _utils
 from .__defaults import default_db
+from ._version import __version__
 from .distrib import Composite
 from .simulation import _ai as AI
 from .simulation import _target
-from .simulation import simulate_battle as sim_battle
 
 TUPLE4 = tuple[float, float, float, float]
 
@@ -40,6 +45,8 @@ class Battle:
         db: str | dict | pd.DataFrame = default_db(),
         bounds: TUPLE4 = (0.0, 10.0, 0.0, 10.0),
         use_tqdm: bool = True,
+        seed: int | None = None,
+        rules: BattleRules | None = None,
     ):
         """
         Instantiate this object with a filepath leading to
@@ -58,11 +65,17 @@ class Battle:
             Draws a progressbar with `simulate_k` if tqdm is installed
         """
         self.use_tqdm = use_tqdm
+        self.seed = 0 if seed is None else int(seed)
+        if self.seed < 0:
+            raise ValueError("seed must be non-negative")
+        self.rules = BattleRules() if rules is None else rules
         # assign with checks
         self.db_ = db
         self._M = None
         self._S = None
         self._sim = None
+        self._result: BattleResult | None = None
+        self._results: tuple[BattleResult, ...] = ()
         self.db_.index = self.db_.index.str.lower()
         # initialise a terra
         self._T = Terrain(bounds, res=0.1, form=None)
@@ -91,6 +104,15 @@ class Battle:
                     ("team", "u1"),
                     ("ai_func_index", "u1"),
                     ("target_ai_func_index", "u1"),
+                    ("stable_id", "u8"),
+                    ("cooldown", "f4"),
+                    ("attack_interval", "f4"),
+                    ("radius", "f4"),
+                    ("move_factor", "f4"),
+                    ("threat_distance_weight", "f4"),
+                    ("threat_durability_weight", "f4"),
+                    ("threat_damage_weight", "f4"),
+                    ("threat_objective_weight", "f4"),
                 ],
                 align=True,
             ),
@@ -176,7 +198,20 @@ class Battle:
             )
             self.T_.bounds_ = expanded
 
-    def _presim(self) -> None:
+    @staticmethod
+    def _sample_positions(sampling, n: int, rng: np.random.Generator) -> np.ndarray:
+        try:
+            return np.asarray(sampling.sample(n, rng=rng))
+        except TypeError:
+            return np.asarray(sampling.sample(n))
+
+    def _presim(
+        self,
+        streams: RandomStreams | None = None,
+        rules: BattleRules | None = None,
+    ) -> None:
+        streams = RandomStreams.from_seed(self.seed) if streams is None else streams
+        selected_rules = self.rules if rules is None else rules
         self._M = Battle._generate_M(sum(self._unit_n))
         matrix = self._M
         assert matrix is not None
@@ -184,7 +219,16 @@ class Battle:
         # check that groups exist in army_set
         _seg_start, _seg_end = self._segments
         decision_ai_map = {"aggressive": 0, "hit_and_run": 1}
-        rolling_ai_map = {"nearest": 0, "random": 1, "close_weak": 2}
+        target_ai_map = {
+            "nearest": 0,
+            "random": 1,
+            "close_weak": 2,
+            "weakest": 3,
+            "highest_threat": 4,
+            "focus_fire": 5,
+            "objective_priority": 6,
+        }
+        occurrence: dict[tuple[int, str], int] = {}
 
         # set initial values.
         for group, (u, n, start, end, comp) in enumerate(
@@ -201,19 +245,219 @@ class Battle:
             matrix["dodge"][start:end] = self.db_.loc[u, "Miss"] / 100.0
             matrix["acc"][start:end] = self.db_.loc[u, "Accuracy"] / 100.0
             matrix["dmg"][start:end] = self.db_.loc[u, "Damage"]
+            matrix["attack_interval"][start:end] = self.db_.loc[u, "Attack Interval"]
+            matrix["radius"][start:end] = self.db_.loc[u, "Radius"]
+            matrix["move_factor"][start:end] = 1.0
+            (
+                matrix["threat_distance_weight"][start:end],
+                matrix["threat_durability_weight"][start:end],
+                matrix["threat_damage_weight"][start:end],
+                matrix["threat_objective_weight"][start:end],
+            ) = comp.doctrine_weights
             # ai func index (0 = aggressive, 1 = hit_and_run)
             matrix["ai_func_index"][start:end] = decision_ai_map[comp.decision_ai]
-            matrix["target_ai_func_index"][start:end] = rolling_ai_map[comp.rolling_ai]
-            # initialise position
-            matrix["x"][start:end] = comp.pos.sample(n)
-            matrix["y"][start:end] = comp.pos.sample(n)
+            matrix["target_ai_func_index"][start:end] = target_ai_map[comp.rolling_ai]
+            team = int(matrix["team"][start])
+            key = (team, u)
+            first_ordinal = occurrence.get(key, 0)
+            for offset, unit_index in enumerate(range(start, end)):
+                identity_text = f"{team}:{u}:{first_ordinal + offset}"
+                identity = identity_text.encode()
+                matrix["stable_id"][unit_index] = int.from_bytes(
+                    hashlib.sha256(identity).digest()[:8], "little"
+                )
+                matrix["x"][unit_index] = self._sample_positions(
+                    comp.pos,
+                    1,
+                    streams.keyed_generator("placement", f"{identity_text}:x"),
+                )[0]
+                matrix["y"][unit_index] = self._sample_positions(
+                    comp.pos,
+                    1,
+                    streams.keyed_generator("placement", f"{identity_text}:y"),
+                )[0]
+            occurrence[key] = first_ordinal + n
 
         # Preserve configured bounds, expanding only where positions fall outside.
         self._expand_bounds_to_M()
-        # assign initial AI targets.
+        # Assign initial targets without index-order noise.
         for group, (start, end) in enumerate(zip(_seg_start, _seg_end)):
-            init_ai = getattr(_target, f"global_{self._comps[group].init_ai}")
-            matrix["target"][start:end] = init_ai(matrix, group)
+            init_ai = self._comps[group].init_ai
+            for actor in range(start, end):
+                enemies = np.where(matrix["team"] != matrix["team"][actor])[0]
+                if init_ai == "random":
+                    ordered = enemies[np.argsort(matrix["stable_id"][enemies])]
+                    target_rng = streams.keyed_generator(
+                        "targeting", int(matrix["stable_id"][actor])
+                    )
+                    target = int(ordered[int(target_rng.integers(ordered.size))])
+                else:
+                    dx = matrix["x"][enemies] - matrix["x"][actor]
+                    dy = matrix["y"][enemies] - matrix["y"][actor]
+                    distance = (dx * dx) + (dy * dy)
+                    if init_ai in {"close_weak", "weakest", "highest_threat"}:
+                        durability = matrix["hp"][enemies] + matrix["armor"][enemies]
+                        d_span = float(np.ptp(distance))
+                        h_span = float(np.ptp(durability))
+                        distance_score = (
+                            np.zeros_like(distance)
+                            if d_span == 0
+                            else (distance - distance.min()) / d_span
+                        )
+                        durability_score = (
+                            np.zeros_like(durability)
+                            if h_span == 0
+                            else (durability - durability.min()) / h_span
+                        )
+                        if init_ai == "weakest":
+                            score = durability
+                        elif init_ai == "highest_threat":
+                            expected_damage = (
+                                matrix["dmg"][enemies]
+                                * matrix["acc"][enemies]
+                                / np.maximum(matrix["attack_interval"][enemies], 1.0)
+                            )
+                            e_span = float(np.ptp(expected_damage))
+                            expected_score = (
+                                np.zeros_like(expected_damage)
+                                if e_span == 0
+                                else (expected_damage - expected_damage.min()) / e_span
+                            )
+                            score = -(
+                                matrix["threat_distance_weight"][actor]
+                                * (1.0 - distance_score)
+                                + matrix["threat_durability_weight"][actor]
+                                * durability_score
+                                + matrix["threat_damage_weight"][actor] * expected_score
+                            )
+                        else:
+                            score = (0.7 * distance_score) + (0.3 * durability_score)
+                    elif init_ai == "objective_priority" and selected_rules.objectives:
+                        objective_distance = np.full(enemies.shape[0], np.inf)
+                        for objective in selected_rules.objectives:
+                            objective_distance = np.minimum(
+                                objective_distance,
+                                (matrix["x"][enemies] - objective.x) ** 2
+                                + (matrix["y"][enemies] - objective.y) ** 2,
+                            )
+                        score = objective_distance
+                    else:
+                        score = distance
+                    minimum = float(np.min(score))
+                    tied = enemies[np.isclose(score, minimum)]
+                    target = int(tied[np.argmin(matrix["stable_id"][tied])])
+                matrix["target"][actor] = target
+
+    def _scenario_id(self, rules: BattleRules | None = None) -> str:
+        selected_rules = self.rules if rules is None else rules
+        assert self._comps is not None
+        unit_names = sorted({comp.name.casefold() for comp in self._comps})
+        stat_columns = (
+            "Allegiance",
+            "HP",
+            "Armor",
+            "Damage",
+            "Accuracy",
+            "Miss",
+            "Movement Speed",
+            "Range",
+            "Attack Interval",
+            "Radius",
+        )
+        payload = {
+            "armies": [
+                {
+                    "name": comp.name.casefold(),
+                    "n": comp.n,
+                    "position": repr(comp.pos),
+                    "init_ai": comp.init_ai,
+                    "rolling_ai": comp.rolling_ai,
+                    "decision_ai": comp.decision_ai,
+                    "doctrine_weights": comp.doctrine_weights,
+                }
+                for comp in sorted(
+                    self._comps,
+                    key=lambda item: (
+                        str(self.db_.loc[item.name.lower(), "Allegiance"]),
+                        item.name.casefold(),
+                        repr(item.pos),
+                    ),
+                )
+            ],
+            "unit_stats": {
+                unit_name: {
+                    column: (
+                        str(self.db_.loc[unit_name, column])
+                        if column == "Allegiance"
+                        else float(self.db_.loc[unit_name, column])
+                    )
+                    for column in stat_columns
+                }
+                for unit_name in unit_names
+            },
+            "bounds": self.bounds_,
+            "terrain": self.T_.form_,
+            "terrain_resolution": self.T_.res_,
+            "rules": {
+                "version": selected_rules.version,
+                "tick_seconds": selected_rules.tick_seconds,
+                "max_ticks": selected_rules.max_ticks,
+                "stalemate_ticks": selected_rules.stalemate_ticks,
+                "line_of_sight": selected_rules.line_of_sight,
+                "collision": selected_rules.collision,
+                "slope_movement": selected_rules.slope_movement,
+                "covers": [
+                    {
+                        "x": cover.x,
+                        "y": cover.y,
+                        "radius": cover.radius,
+                        "hit_multiplier": cover.hit_multiplier,
+                    }
+                    for cover in selected_rules.covers
+                ],
+                "objectives": [
+                    {
+                        "x": objective.x,
+                        "y": objective.y,
+                        "radius": objective.radius,
+                        "capture_ticks": objective.capture_ticks,
+                    }
+                    for objective in selected_rules.objectives
+                ],
+            },
+        }
+        canonical = json.dumps(
+            payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True
+        )
+        return hashlib.sha256(canonical.encode()).hexdigest()
+
+    def _scenario_features(self, matrix: np.ndarray, rules: BattleRules) -> dict:
+        """Fixed-length numeric inputs for the first surrogate representation."""
+        return {
+            "unit_count": int(matrix.shape[0]),
+            "team_count": int(np.unique(matrix["team"]).shape[0]),
+            "battlefield_width": float(self.bounds_[1] - self.bounds_[0]),
+            "battlefield_height": float(self.bounds_[3] - self.bounds_[2]),
+            "objective_count": len(rules.objectives),
+            "cover_count": len(rules.covers),
+            "mean_hp": float(np.mean(matrix["hp"])),
+            "mean_armor": float(np.mean(matrix["armor"])),
+            "mean_damage": float(np.mean(matrix["dmg"])),
+            "mean_range": float(np.mean(matrix["range"])),
+            "mean_speed": float(np.mean(matrix["speed"])),
+            "mean_attack_interval": float(np.mean(matrix["attack_interval"])),
+            "mean_radius": float(np.mean(matrix["radius"])),
+            "mean_threat_distance_weight": float(
+                np.mean(matrix["threat_distance_weight"])
+            ),
+            "mean_threat_durability_weight": float(
+                np.mean(matrix["threat_durability_weight"])
+            ),
+            "mean_threat_damage_weight": float(np.mean(matrix["threat_damage_weight"])),
+            "mean_threat_objective_weight": float(
+                np.mean(matrix["threat_objective_weight"])
+            ),
+        }
 
     @property
     def composition_(self) -> list[Composite]:
@@ -260,6 +504,16 @@ class Battle:
     def sim_(self):
         """The simulation object."""
         return self._sim
+
+    @property
+    def result_(self) -> BattleResult | None:
+        """Structured result from the most recent simulation."""
+        return self._result
+
+    @property
+    def results_(self) -> tuple[BattleResult, ...]:
+        """Structured results from the most recent repeated simulation."""
+        return self._results
 
     @property
     def db_(self) -> pd.DataFrame:
@@ -385,6 +639,8 @@ class Battle:
         self._unit_n = [u.n for u in army_set]
         self._M = None
         self._sim = None
+        self._result = None
+        self._results = ()
         return self
 
     def apply_terrain(self, t: str | Terrain | None = None, res: float = 0.1):
@@ -435,7 +691,13 @@ class Battle:
         self.bounds_ = bounds
         return self
 
-    def simulate(self, verbose: int = 0):
+    def simulate(
+        self,
+        verbose: int = 0,
+        *,
+        seed: int | None = None,
+        rules: BattleRules | None = None,
+    ):
         """
         Runs the 'simulate_battle' algorithm. Creates and passes a copy to simulate..
 
@@ -450,16 +712,39 @@ class Battle:
             return self.sim_
 
         # set up M matrix from composition info
-        self._presim()
+        selected_seed = self.seed if seed is None else int(seed)
+        selected_rules = self.rules if rules is None else rules
+        streams = RandomStreams.from_seed(selected_seed)
+        self._presim(streams, selected_rules)
         matrix = self.M_
         assert matrix is not None
         # re-generate terrain.
-        self.T_.generate()
-        # we cache a copy of the sim as well for convenience
-        self._sim = sim_battle(np.copy(matrix), self.T_, ret_frames=True)
+        self.T_.generate(rng=streams.generator("terrain"))
+        run = simulate_tactical(
+            matrix,
+            self.T_,
+            rules=selected_rules,
+            streams=streams,
+            scenario_id=self._scenario_id(selected_rules),
+            simulator_version=__version__,
+            randomized_subsystems=("placement", "terrain", "combat"),
+            scenario_features=self._scenario_features(matrix, selected_rules),
+            team_labels={
+                int(team): str(label) for team, label in self.allegiances_.items()
+            },
+        )
+        self._sim = run.frames
+        self._result = run.result
+        self._results = (run.result,)
         return self.sim_
 
-    def simulate_k(self, k: int = 10):
+    def simulate_k(
+        self,
+        k: int = 10,
+        *,
+        seed: int | None = None,
+        randomize: tuple[str, ...] = ("combat",),
+    ):
         """
         Runs the 'simulate_battle' algorithm 'k' times. Creates and passes a copy
         to simulate.
@@ -480,6 +765,10 @@ class Battle:
         """
         self._is_instantiated()
 
+        allowed_randomization = {"placement", "terrain", "combat"}
+        unknown = set(randomize) - allowed_randomization
+        if unknown:
+            raise ValueError(f"unknown randomize subsystem(s): {sorted(unknown)}")
         if k < 1:
             raise ValueError("'k' must be at least 1")
         else:
@@ -492,17 +781,55 @@ class Battle:
 
             # now handles J teams (thanks kmcnayr @ https://github.com/gregparkes/BattleSimulator/issues/4)
             runs = np.zeros((k, np.unique(self._teams).shape[0]), dtype=np.int64)
-            # pre-simulate fields.
-            self._presim()
-            matrix = self.M_
-            assert matrix is not None
-            # generate new terra
-            self.T_.generate()
+            root_seed = self.seed if seed is None else int(seed)
+            fixed_streams = RandomStreams.from_seed(root_seed)
+            self._presim(fixed_streams)
+            initialized_matrix = self.M_
+            assert initialized_matrix is not None
+            fixed_matrix = np.copy(initialized_matrix)
+            self.T_.generate(rng=fixed_streams.generator("terrain"))
+            generated_terrain = self.T_.Z_
+            assert generated_terrain is not None
+            fixed_terrain = np.copy(generated_terrain)
+            results: list[BattleResult] = []
 
             for i in self._loading_bar(k):
-                # run simulation
-                team_counts = sim_battle(np.copy(matrix), self.T_, ret_frames=False)
-                runs[i, :] = team_counts
+                trial_seed = derive_trial_seed(root_seed, i)
+                streams = RandomStreams.for_trial(
+                    root_seed=root_seed,
+                    trial_seed=trial_seed,
+                    randomized=set(randomize),
+                )
+                if "placement" in randomize:
+                    self._presim(streams)
+                    randomized_matrix = self.M_
+                    assert randomized_matrix is not None
+                    matrix = np.copy(randomized_matrix)
+                else:
+                    matrix = np.copy(fixed_matrix)
+                if "terrain" in randomize:
+                    self.T_.generate(rng=streams.generator("terrain"))
+                else:
+                    self.T_._Z = np.copy(fixed_terrain)
+                run = simulate_tactical(
+                    matrix,
+                    self.T_,
+                    rules=self.rules,
+                    streams=streams,
+                    scenario_id=self._scenario_id(),
+                    simulator_version=__version__,
+                    record_events=False,
+                    randomized_subsystems=randomize,
+                    scenario_features=self._scenario_features(matrix, self.rules),
+                    team_labels={
+                        int(team): str(label)
+                        for team, label in self.allegiances_.items()
+                    },
+                )
+                results.append(run.result)
+                runs[i, :] = [team.remaining_units for team in run.result.teams]
+            self._results = tuple(results)
+            self._result = results[-1]
             return pd.DataFrame(runs, columns=self.allegiances_.values)
 
     def sim_jupyter(self, func: Callable = quiver_fight, create_html: bool = False):

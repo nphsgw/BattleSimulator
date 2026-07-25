@@ -47,7 +47,20 @@ def turbulence(noise, x: int, y: int, size: int, dim_x: int, dim_y: int) -> floa
 
 
 @njit
-def create_perlin_map(dim_x: int, dim_y: int, scale: int = 30):
+def _create_perlin_from_noise(base_noise, new_noise, scale: int):
+    dim_x, dim_y = base_noise.shape
+    for x in range(dim_x):
+        for y in range(dim_y):
+            new_noise[x, y] = turbulence(base_noise, x, y, scale, dim_x, dim_y)
+    return new_noise
+
+
+def create_perlin_map(
+    dim_x: int,
+    dim_y: int,
+    scale: int = 30,
+    rng: np.random.Generator | None = None,
+):
     """Defines a perlin map with turbulence (upgrade on gauss map)
 
     It's recommended that scale is an integer close to 30% of one of the map dimensions.
@@ -56,10 +69,7 @@ def create_perlin_map(dim_x: int, dim_y: int, scale: int = 30):
     Too high and there is no difference, too low and there is pixellized localities.
 
     """
-    base_noise = np.random.rand(dim_x, dim_y)
-    new_noise = np.random.rand(dim_x, dim_y)
-    # set every value in alterable noise map
-    for x in range(dim_x):
-        for y in range(dim_y):
-            new_noise[x, y] = turbulence(base_noise, x, y, scale, dim_x, dim_y)
-    return new_noise
+    generator = np.random.default_rng() if rng is None else rng
+    base_noise = generator.random((dim_x, dim_y))
+    new_noise = np.empty((dim_x, dim_y))
+    return _create_perlin_from_noise(base_noise, new_noise, scale)

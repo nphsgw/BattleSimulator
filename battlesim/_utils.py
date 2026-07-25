@@ -13,6 +13,7 @@ from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import pandas as pd
 
 
@@ -91,11 +92,11 @@ def check_unit_file(df: pd.DataFrame) -> None:
         "The name of the unit. Format string",
         "The team/allegiance of the unit. Format string, must be hashable",
         "HP: the health of the unit; an integer or float, no limit. Must be > 0",
-        "Armor: the armor of the unit; an integer or float, no limit. Must be > 0",
-        "Damage: the primary damage of the unit; integer or float, no limit.",
+        "Armor: the armor of the unit; an integer or float. Must be >= 0",
+        "Damage: the primary damage of the unit; integer or float. Must be >= 0",
         "Accuracy: the accuracy of the unit; an integer/float in the range [0, 100]",
-        "Miss: the chance of the unit to miss an attack; an integer/float in the range [0, 100]",
-        "Movement Speed: the movement speed of the unit; float.",
+        "Miss: legacy name for target dodge/evasion; an integer/float in the range [0, 100]",
+        "Movement Speed: the movement speed of the unit; float. Must be >= 0",
         "Range: the range of the unit; integer or float, Must be > 0",
     )
 
@@ -106,9 +107,72 @@ def check_unit_file(df: pd.DataFrame) -> None:
                 f"column '{m}' not found in file and must be present. Description:'{mappp[m]}'"
             )
 
+    if (
+        df["Name"].isna().any()
+        or not df["Name"]
+        .map(lambda value: isinstance(value, str) and bool(value.strip()))
+        .all()
+    ):
+        raise ValueError("'Name' values must be non-empty strings")
+    normalized_names = df["Name"].str.casefold()
+    if normalized_names.duplicated().any():
+        raise ValueError("'Name' values must be unique ignoring case")
+
+    if df["Allegiance"].isna().any():
+        raise ValueError("'Allegiance' values must not be missing")
+    for allegiance in df["Allegiance"]:
+        try:
+            hash(allegiance)
+        except TypeError as error:
+            raise ValueError("'Allegiance' values must be hashable") from error
+
+    numeric_columns = table_cols[2:]
+    for column in numeric_columns:
+        original = df[column]
+        if original.map(lambda value: isinstance(value, (bool, np.bool_))).any():
+            raise ValueError(f"'{column}' values must be numeric, not boolean")
+        values = pd.to_numeric(original, errors="coerce")
+        if not np.isfinite(values.to_numpy(dtype=float)).all():
+            raise ValueError(f"'{column}' values must be finite numbers")
+        df[column] = values
+
+    constraints = {
+        "HP": (df["HP"] > 0, "must be > 0"),
+        "Armor": (df["Armor"] >= 0, "must be >= 0"),
+        "Damage": (df["Damage"] >= 0, "must be >= 0"),
+        "Accuracy": (df["Accuracy"].between(0, 100), "must be in [0, 100]"),
+        "Miss": (df["Miss"].between(0, 100), "must be in [0, 100]"),
+        "Movement Speed": (df["Movement Speed"] >= 0, "must be >= 0"),
+        "Range": (df["Range"] > 0, "must be > 0"),
+    }
+    for column, (valid, message) in constraints.items():
+        if not valid.all():
+            raise ValueError(f"'{column}' values {message}")
+
+    optional_constraints = {
+        "Attack Interval": (lambda values: values >= 1, "must be >= 1"),
+        "Radius": (lambda values: values > 0, "must be > 0"),
+    }
+    for column, (predicate, message) in optional_constraints.items():
+        if column not in df:
+            continue
+        original = df[column]
+        if original.map(lambda value: isinstance(value, (bool, np.bool_))).any():
+            raise ValueError(f"'{column}' values must be numeric, not boolean")
+        values = pd.to_numeric(original, errors="coerce")
+        if not np.isfinite(values.to_numpy(dtype=float)).all():
+            raise ValueError(f"'{column}' values must be finite numbers")
+        if not predicate(values).all():
+            raise ValueError(f"'{column}' values {message}")
+        df[column] = values
+
 
 def preprocess_unit_file(df: pd.DataFrame) -> None:
     """Works inplace; no return"""
+    if "Attack Interval" not in df:
+        df["Attack Interval"] = 1.0
+    if "Radius" not in df:
+        df["Radius"] = 0.1
     # assign index
     df.set_index("Name", inplace=True)
     # assign int allegiance

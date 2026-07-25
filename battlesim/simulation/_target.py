@@ -41,7 +41,15 @@ from battlesim import _mathutils
 
 def get_function_names() -> list[str]:
     """Returns the function names."""
-    return ["random", "nearest", "close_weak"]
+    return [
+        "random",
+        "nearest",
+        "close_weak",
+        "weakest",
+        "highest_threat",
+        "focus_fire",
+        "objective_priority",
+    ]
 
 
 def get_global_function_names() -> list[str]:
@@ -97,15 +105,59 @@ def close_weak(M, enemies: NDArray[np.uint], i: int, wtc_ratio: float = 0.7) -> 
     """
     if enemies.shape[0] > 0:
         distances = _mathutils.sq_euclidean_distance2(M["x"], M["y"], i, enemies)
-
+        durability = np.maximum(M["hp"][enemies], 0.0) + np.maximum(
+            M["armor"][enemies], 0.0
+        )
         return enemies[
             np.argmin(
-                (_mathutils.no_mean(M["hp"][enemies]) * (1.0 - wtc_ratio))
-                + (_mathutils.no_mean(distances) * wtc_ratio)
+                (_mathutils.minmax(durability) * (1.0 - wtc_ratio))
+                + (_mathutils.minmax(distances) * wtc_ratio)
             )
         ]
     else:
         return -1
+
+
+@njit
+def weakest(M, enemies: NDArray[np.uint], i: int) -> int:
+    """Select the enemy with the least remaining HP plus armor."""
+    if enemies.shape[0] == 0:
+        return -1
+    durability = np.maximum(M["hp"][enemies], 0.0) + np.maximum(
+        M["armor"][enemies], 0.0
+    )
+    return enemies[np.argmin(durability)]
+
+
+@njit
+def highest_threat(M, enemies: NDArray[np.uint], i: int) -> int:
+    """Select the largest expected damage per attack interval."""
+    if enemies.shape[0] == 0:
+        return -1
+    threat = (
+        M["dmg"][enemies]
+        * M["acc"][enemies]
+        / np.maximum(M["attack_interval"][enemies], 1.0)
+    )
+    return enemies[np.argmax(threat)]
+
+
+@njit
+def focus_fire(M, enemies: NDArray[np.uint], i: int) -> int:
+    """Prefer an enemy already targeted by the most living allies."""
+    if enemies.shape[0] == 0:
+        return -1
+    allies = np.where((M["hp"] > 0.0) & (M["team"] == M["team"][i]))[0]
+    counts = np.empty(enemies.shape[0], dtype=np.int64)
+    for candidate_i in range(enemies.shape[0]):
+        counts[candidate_i] = np.sum(M["target"][allies] == enemies[candidate_i])
+    return enemies[np.argmax(counts)]
+
+
+@njit
+def objective_priority(M, enemies: NDArray[np.uint], i: int) -> int:
+    """Legacy fallback when objective geometry is unavailable."""
+    return nearest(M, enemies, i)
 
 
 # ------------------------ GLOBAL TARGET ASSIGNMENTS -----------------------
@@ -155,14 +207,10 @@ def global_nearest(M, group_i: int):
     # define
     selector = M["id"] == group_i
     t = M["team"][selector][0]
-    # calculate distance matrix, with offset to ignore diagonal, with random noise
+    # Calculate deterministically; tie-breaking follows candidate matrix order.
     dist_matrix_sq = _mathutils.sq_distance_matrix(M["x"], M["y"])
     # only calculate for diaginal indices.
     np.fill_diagonal(dist_matrix_sq, np.max(dist_matrix_sq))
-    # sprinkle on random noise
-    dist_matrix_sq += (
-        np.random.rand(dist_matrix_sq.shape[0], dist_matrix_sq.shape[0]) / 4.0
-    )
     # get unit IDs that are not equal to this team for enemies.
     (id_not,) = np.where(M["team"] != t)
     (id_is,) = np.where(selector)
@@ -177,21 +225,59 @@ def global_close_weak(M, group_i: int, wtc_ratio=0.7):
     # define
     selector = M["id"] == group_i
     t = M["team"][selector][0]
-    hp = M["hp"]
-    # calculate distance matrix, with offset to ignore diagonal, with random noise
+    # calculate distance matrix.
     dist_matrix_sq = _mathutils.sq_distance_matrix(M["x"], M["y"])
-    np.fill_diagonal(dist_matrix_sq, np.max(dist_matrix_sq))
-    dist_matrix_sq += (
-        np.random.rand(dist_matrix_sq.shape[0], dist_matrix_sq.shape[0]) / 4.0
-    )
-
-    # return the enemy that is closest and lowest HP
-    hp_adj = _mathutils.no_mean(hp) * (1.0 - wtc_ratio)
-    dist_adj = _mathutils.no_mean(dist_matrix_sq) * wtc_ratio
 
     # get unit IDs that are not equal to this team for enemies.
     (id_not,) = np.where(M["team"] != t)
     (id_is,) = np.where(selector)
-    # use distance matrix and ids to select sub groups to find argmin
-    j = _mathutils.matrix_argmin(dist_adj[id_is, :][:, id_not] + hp_adj[id_not])
+    durability = np.maximum(M["hp"][id_not], 0.0) + np.maximum(M["armor"][id_not], 0.0)
+    durability_score = _mathutils.minmax(durability)
+    candidate_distances = dist_matrix_sq[id_is, :][:, id_not]
+    scores = np.empty_like(candidate_distances)
+    for row_i in range(candidate_distances.shape[0]):
+        scores[row_i] = _mathutils.minmax(
+            candidate_distances[row_i]
+        ) * wtc_ratio + durability_score * (1.0 - wtc_ratio)
+    j = _mathutils.matrix_argmin(scores)
     return id_not[j]
+
+
+@njit
+def _global_from_local(M, group_i: int, mode: int):
+    selector = M["id"] == group_i
+    team = M["team"][selector][0]
+    enemies = np.where(M["team"] != team)[0]
+    actors = np.where(selector)[0]
+    result = np.empty(actors.shape[0], dtype=np.int64)
+    for result_i in range(actors.shape[0]):
+        actor = actors[result_i]
+        if mode == 3:
+            result[result_i] = weakest(M, enemies, actor)
+        elif mode == 4:
+            result[result_i] = highest_threat(M, enemies, actor)
+        elif mode == 5:
+            result[result_i] = focus_fire(M, enemies, actor)
+        else:
+            result[result_i] = objective_priority(M, enemies, actor)
+    return result
+
+
+@njit
+def global_weakest(M, group_i: int):
+    return _global_from_local(M, group_i, 3)
+
+
+@njit
+def global_highest_threat(M, group_i: int):
+    return _global_from_local(M, group_i, 4)
+
+
+@njit
+def global_focus_fire(M, group_i: int):
+    return _global_from_local(M, group_i, 5)
+
+
+@njit
+def global_objective_priority(M, group_i: int):
+    return _global_from_local(M, group_i, 6)

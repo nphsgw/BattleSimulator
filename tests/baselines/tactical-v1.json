@@ -1,0 +1,8 @@
+{
+  "rules_version": "1.0",
+  "seeds": 32,
+  "team_0_wins": 26,
+  "team_1_wins": 0,
+  "undecided": 6,
+  "mean_ticks": 14.875
+}

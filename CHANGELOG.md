@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.0] - 2026-07-25
+### Added
+- Rules-version-1 simultaneous tactical kernel with explicit seeds, cooldowns,
+  line-of-sight, cover, collision, objectives, and auditable events.
+- Versioned `BattleResult`, Monte Carlo summaries, resumable batch datasets,
+  sensitivity helpers, and surrogate-ready aggregate features.
+- Deterministic targeting doctrines and validity/baseline tests.
+
+### Changed
+- `Battle.simulate()` keeps its frame return while exposing `result_`.
+- `Battle.simulate_k()` keeps its DataFrame return while exposing `results_` and
+  randomization controls.
+- Terrain and placement randomness now use named generators.
+
 ## [0.3.7] - 2020-10-23
 ### Added
 - `Composite` class to create armies with. This holds all the meta information for a unit group.
