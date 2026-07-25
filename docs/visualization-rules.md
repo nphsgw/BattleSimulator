@@ -19,6 +19,28 @@
 - 可視化のために戦闘ロジックを変更しない
 - 最初の段階では派手な演出やリアルタイム UI を優先しない
 - 全情報を常時表示して視認性を損なう構成にしない
+- notebook の実行状態を可視化機能の前提にしない
+
+## Notebook Independence
+- 可視化の正本は `battlesim/` 配下の通常の Python API とする
+- 対話操作の主要 UI は、pytest から検証できるローカル Web UI とする
+- notebook は教材、探索、利用例として残せるが、主要機能の実装場所にはしない
+- CLI、Web UI、notebook は同じ表示モデルと描画 API を利用する
+- 既存の `Battle.sim_jupyter()` は後方互換性のため維持する
+
+## Visualization Layers
+可視化は次の責務へ分離する。
+
+1. simulation
+   戦闘結果の frame を生成する
+2. view model
+   frame から HP 比率、target 座標、生死、地形補助値などの表示用データを生成する
+3. renderer
+   view model を Matplotlib の Figure や animation へ変換する
+4. interface
+   CLI、ローカル Web UI、notebook から renderer を呼び出す
+
+view model は UI framework に依存させず、固定 frame を使った単体テストを可能にする。
 
 ## Display Modes
 
@@ -67,6 +89,15 @@
 - デバッグ表示では overlay の on/off を切り替えられる構成を優先する
 - 線、ラベル、バーは地形背景より前面に描画する
 - 背景地形と overlay が干渉しすぎないよう、透明度を前提に調整する
+
+## Playback Policy
+- シミュレーション計算と再生速度を分離する
+- シミュレーション完了後は frame 0 から自動再生を開始する
+- UI は再生、一時停止、先頭から再生の操作を持つ
+- 再生速度は frames per second で選択できるようにする
+- frame slider を手動操作した場合は再生を一時停止する
+- 最終 frame に到達した場合は自動的に一時停止する
+- 再生のために simulation を再実行しない
 
 ## Implementation Policy
 - まずは `quiver_fight()` を直接肥大化させず、新しい debug 描画関数を追加する
@@ -138,10 +169,18 @@
 - 死亡ユニットの terrain overlay は表示しない
 
 ### Notebook Controls
-- notebook 上では widget から `show_hp`, `show_target_lines`, `show_terrain_text` を切り替えられるようにする
-- notebook 上では `frame index` を slider から調整できるようにする
+- 表示 UI では `show_hp`, `show_target_lines`, `show_terrain_text` を切り替えられるようにする
+- 表示 UI では `frame index` を slider から調整できるようにする
+- notebook 固有の widget は必須機能としない
 
 ### Background Interaction
 - terrain 自体は今まで通り背景に表示する
 - terrain overlay のテキストは地形背景より前面に描く
 - 背景地形は `alpha` を抑え、overlay の可読性を優先する
+
+## Validation Policy
+- view model は手書きの固定 frame で値を検証する
+- renderer は artist の数、座標、ラベルなどを優先して検証する
+- 画像比較テストは代表的な少数ケースに限定する
+- Web UI は headless な UI テストで widget 操作と例外の有無を検証する
+- ランダムな実シミュレーションだけに依存する描画テストは避ける

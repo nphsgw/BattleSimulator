@@ -62,7 +62,9 @@ def _terrain_debug_values(M, Z, xtile, ytile):
         z_i[unit_i] = Z[x_i, y_i]
         z_j[unit_i] = Z[x_j, y_j]
         move_factor[unit_i] = 1.0 - (z_i[unit_i] / 2.0)
-        effective_range[unit_i] = M["range"][unit_i] * (((z_i[unit_i] ** 2) / 3.0) + 1.0)
+        effective_range[unit_i] = M["range"][unit_i] * (
+            ((z_i[unit_i] ** 2) / 3.0) + 1.0
+        )
 
     return z_i, z_j, move_factor, effective_range
 
@@ -117,10 +119,10 @@ def _step_through_update(M, Z, max_step, teams, enemy_targets, bounds, frames):
             enemy_targets[g] = np.where((M["hp"] > 0.0) & (M["team"] != teams[g]))[0]
 
         """# copy a frame"""
-        z_i, z_j, move_factor, effective_range = _terrain_debug_values(M, Z, xtile, ytile)
-        _copy_frame(
-            frames, M, dx, dy, dists, z_i, z_j, effective_range, move_factor, t
+        z_i, z_j, move_factor, effective_range = _terrain_debug_values(
+            M, Z, xtile, ytile
         )
+        _copy_frame(frames, M, dx, dy, dists, z_i, z_j, effective_range, move_factor, t)
 
         """# iterate over units and call AI function."""
         running = _loop_units(

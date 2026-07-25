@@ -18,7 +18,9 @@ ROOT = (Path(__file__).parent / "../").resolve()
 
 def _build_small_battle() -> bsm.Battle:
     battle = bsm.Battle(str(ROOT / "datasets/starwars-clonewars.csv"), use_tqdm=False)
-    battle.create_army([bsm.Composite("B1 battledroid", 3), bsm.Composite("Clone Trooper", 3)])
+    battle.create_army(
+        [bsm.Composite("B1 battledroid", 3), bsm.Composite("Clone Trooper", 3)]
+    )
     battle.simulate()
     return battle
 
@@ -56,12 +58,13 @@ def test_sim_jupyter_accepts_debug_plotter():
     assert isinstance(anim, FuncAnimation)
 
 
-def test_sim_jupyter_create_html_returns_html5_video():
+def test_sim_jupyter_create_html_returns_javascript_html():
     battle = _build_small_battle()
 
     html = battle.sim_jupyter(func=bsm.quiver_fight_debug, create_html=True)
 
-    assert "<video" in html
+    assert "<script" in html
+    assert "Animation" in html
 
 
 def test_sim_export_accepts_debug_plotter():

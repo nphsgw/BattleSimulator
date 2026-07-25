@@ -1,0 +1,16 @@
+database = "../datasets/starwars-clonewars.csv"
+bounds = [-3.0, 8.0, -3.0, 8.0]
+terrain = "contour"
+terrain_resolution = 0.2
+
+[[armies]]
+name = "B1 battledroid"
+count = 4
+position_distribution = "normal"
+position_parameters = [0.0, 0.5]
+
+[[armies]]
+name = "Clone Trooper"
+count = 4
+position_distribution = "normal"
+position_parameters = [5.0, 0.5]

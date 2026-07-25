@@ -16,6 +16,7 @@ from matplotlib import animation, colors
 from matplotlib.lines import Line2D
 
 from battlesim._utils import slice_loop
+from battlesim.plot._viewmodel import build_frame_view
 from battlesim.terra._terrain import Terrain
 
 # all functions to import
@@ -112,7 +113,9 @@ def _setup_axes(
     return fig, ax, allegiances, resolved_labels, resolved_colors, combs
 
 
-def _frame_unit_subset(frame: np.ndarray, team: object, unit_type: object) -> np.ndarray:
+def _frame_unit_subset(
+    frame: np.ndarray, team: object, unit_type: object
+) -> np.ndarray:
     return frame[
         reduce(
             np.logical_and,
@@ -291,7 +294,13 @@ def quiver_fight_debug(
             )
         )
         (team_dead,) = ax.plot(
-            [], [], "x", color=allegiance_color[team], alpha=0.25, markersize=5.0, zorder=5
+            [],
+            [],
+            "x",
+            color=allegiance_color[team],
+            alpha=0.25,
+            markersize=5.0,
+            zorder=5,
         )
         dead.append(team_dead)
 
@@ -308,7 +317,8 @@ def quiver_fight_debug(
     terrain_text = []
     for color in unit_colors:
         (target_line,) = ax.plot(
-            [], [],
+            [],
+            [],
             linestyle="--",
             linewidth=0.8,
             color=color,
@@ -317,7 +327,8 @@ def quiver_fight_debug(
         )
         target_lines.append(target_line)
         (hp_bar,) = ax.plot(
-            [], [],
+            [],
+            [],
             linewidth=2.2,
             solid_capstyle="round",
             color="tab:green",
@@ -333,7 +344,12 @@ def quiver_fight_debug(
                 ha="center",
                 va="bottom",
                 zorder=7,
-                bbox={"boxstyle": "round,pad=0.15", "facecolor": "white", "alpha": 0.45, "edgecolor": "none"},
+                bbox={
+                    "boxstyle": "round,pad=0.15",
+                    "facecolor": "white",
+                    "alpha": 0.45,
+                    "edgecolor": "none",
+                },
             )
         )
 
@@ -360,7 +376,9 @@ def quiver_fight_debug(
                 target_lines[unit_i].set_data([], [])
 
             if show_hp and alive:
-                hp_ratio = float(np.clip(frame["hp"][unit_i] / max_hp[unit_i], 0.0, 1.0))
+                hp_ratio = float(
+                    np.clip(frame["hp"][unit_i] / max_hp[unit_i], 0.0, 1.0)
+                )
                 x0 = float(frame["x"][unit_i] - (hp_bar_width / 2.0))
                 y0 = float(frame["y"][unit_i] + hp_bar_offset)
                 hp_bars[unit_i].set_data(
@@ -434,7 +452,8 @@ def quiver_frame_debug(
     """
     Draws a single debug frame for notebook inspection.
     """
-    frame_index = max(0, min(frame_i, frames.shape[0] - 1))
+    frame_view = build_frame_view(frames, frame_i)
+    frame_index = frame_view.frame_index
     frame = frames[frame_index]
     fig, ax, _allegiances, _labels, allegiance_color, combs = _setup_axes(
         frames, terrain, allegiance_label, allegiance_color
@@ -444,8 +463,6 @@ def quiver_frame_debug(
     plot_span = max(xmax - xmin, ymax - ymin, 1.0)
     hp_bar_width = plot_span * 0.04
     hp_bar_offset = plot_span * 0.015
-    max_hp = np.maximum(frames["hp"].max(axis=0), 1.0)
-    has_terrain_fields = _has_terrain_overlay_fields(frames)
 
     for team, unit_type in combs:
         team_type_i = np.logical_and(frame["team"] == team, frame["utype"] == unit_type)
@@ -477,50 +494,51 @@ def quiver_frame_debug(
                 zorder=5,
             )
 
-    for unit_i in range(frame.shape[0]):
-        alive = frame["hp"][unit_i] > 0.0
-        if not alive:
+    for unit in frame_view.units:
+        if not unit.alive:
             continue
 
-        unit_color = allegiance_color[frame["team"][unit_i]]
-        x_i = float(frame["x"][unit_i])
-        y_i = float(frame["y"][unit_i])
+        unit_color = allegiance_color[unit.team]
+        x_i = unit.x
+        y_i = unit.y
 
-        if show_target_lines:
-            target_i = int(frame["target"][unit_i])
-            if 0 <= target_i < frame.shape[0]:
-                ax.plot(
-                    [x_i, frame["x"][target_i]],
-                    [y_i, frame["y"][target_i]],
-                    linestyle="--",
-                    linewidth=0.8,
-                    color=unit_color,
-                    alpha=0.25,
-                    zorder=2,
-                )
+        if show_target_lines and unit.target_position is not None:
+            target_x, target_y = unit.target_position
+            ax.plot(
+                [x_i, target_x],
+                [y_i, target_y],
+                linestyle="--",
+                linewidth=0.8,
+                color=unit_color,
+                alpha=0.25,
+                zorder=2,
+            )
 
         if show_hp:
-            hp_ratio = float(np.clip(frame["hp"][unit_i] / max_hp[unit_i], 0.0, 1.0))
             x0 = x_i - (hp_bar_width / 2.0)
             y0 = y_i + hp_bar_offset
             ax.plot(
-                [x0, x0 + (hp_bar_width * hp_ratio)],
+                [x0, x0 + (hp_bar_width * unit.hp_ratio)],
                 [y0, y0],
                 linewidth=2.2,
                 solid_capstyle="round",
-                color=_hp_color(hp_ratio),
+                color=_hp_color(unit.hp_ratio),
                 zorder=6,
             )
 
-        if show_terrain_text and has_terrain_fields:
+        if show_terrain_text and frame_view.has_terrain:
+            assert unit.z is not None
+            assert unit.move_factor is not None
+            assert unit.effective_range is not None
+            assert unit.damage_factor is not None
             ax.text(
                 x_i,
                 y_i + (hp_bar_offset * 2.2),
                 "\n".join(
                     [
-                        f"z {frame['z'][unit_i]:.2f}",
-                        f"mv {frame['move_factor'][unit_i]:.2f}  rg {frame['effective_range'][unit_i]:.2f}",
-                        f"dmg {frame['damage_factor'][unit_i]:.2f}",
+                        f"z {unit.z:.2f}",
+                        f"mv {unit.move_factor:.2f}  rg {unit.effective_range:.2f}",
+                        f"dmg {unit.damage_factor:.2f}",
                     ]
                 ),
                 fontsize=6,

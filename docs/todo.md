@@ -74,3 +74,23 @@
 ### Notebook / Teaching Cleanup
 - `examples/` と `teaching/` の notebook にある Ruff 指摘を別タスクとして整理する
 - 教材 notebook の unused import、`not in`、`lambda` 代入などの古い書き方を必要に応じて更新する
+
+## Notebook-Independent Visualization
+
+### Phase 1: Testable Core
+- [x] notebook を主要機能の実装場所にしない方針を文書化する
+- [x] frame から表示用データを生成する view model を分離する
+- [x] 固定 frame を使った view model の単体テストを追加する
+- [x] 静止 frame renderer から view model を利用する
+
+### Phase 2: Interfaces
+- [x] 静止 frame をファイルへ出力できる CLI を追加する
+- [x] frame slider と overlay toggle を持つローカル Web UI を追加する
+- [x] Web UI の headless テストを追加する
+- [x] Web UI に速度調整可能な frame 再生と一時停止を追加する
+
+### Phase 3: Migration
+- [x] README の主要な可視化導線を CLI / Web UI へ変更する
+- [ ] notebook を教材、探索、利用例へ分類する
+- [ ] `ipywidgets` が不要になった段階で notebook extra を整理する
+- [ ] 既存 `sim_jupyter()` の互換性を維持したまま位置付けを明記する

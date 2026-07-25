@@ -10,7 +10,16 @@ from . import (  # noqa: F401
 )
 from ._battle import Battle  # noqa: F401
 from .distrib import Composite, Sampling  # noqa: F401
-from .plot import quiver_fight, quiver_fight_debug, quiver_frame_debug  # noqa: F401
+from .plot import (  # noqa: F401
+    FrameView,
+    UnitView,
+    advance_playback,
+    build_frame_view,
+    quiver_fight,
+    quiver_fight_debug,
+    quiver_frame_debug,
+)
+from .scenario import ArmySpec, BattleScenario  # noqa: F401
 from .terra import Terrain  # noqa: F401
 
 __version__ = "0.3.7"

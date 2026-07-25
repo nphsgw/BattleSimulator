@@ -82,6 +82,35 @@ If you prefer activating the generated virtual environment directly::
 The ``notebook`` extra includes the Jupyter stack plus ``ipywidgets`` for the
 interactive visualization notebook.
 
+Notebook-independent visualization
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The primary interactive viewer runs as a local web application:
+
+.. code-block:: console
+
+    uv run --extra app streamlit run apps/battle_viewer.py
+
+or:
+
+.. code-block:: console
+
+    make app
+
+The viewer provides battle configuration, adjustable frame playback,
+play/pause/replay controls, a frame slider, debug overlay switches, and PNG
+download without requiring a notebook. A completed simulation starts playback
+from the first frame at 1 frame per second by default.
+
+For a non-interactive workflow, render a TOML scenario directly to an image:
+
+.. code-block:: console
+
+    uv run battlesim-render scenarios/clone-vs-droid.toml battle.png
+
+``Battle.sim_jupyter()`` remains available for compatibility and for teaching
+or exploratory use.
+
 Running Tests
 ~~~~~~~~~~~~~
 

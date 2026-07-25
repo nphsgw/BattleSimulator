@@ -380,7 +380,7 @@ NumPy の乱数分布をラップするクラス。
 
 ### Jupyter Animation
 `sim_jupyter()` は `quiver_fight()` を使ったアニメーションオブジェクトを返す。
-`create_html=True` の場合は `to_html5_video()` の結果を返す。
+`create_html=True` の場合は `to_jshtml()` の結果を返す。
 
 可視化関数は `func=` で差し替えできる。
 現時点で確認済みの代表例:
@@ -412,12 +412,46 @@ NumPy の乱数分布をラップするクラス。
 - `interval`
 
 ### Notebook Interaction
-`examples/debug-visualization.ipynb` では `ipywidgets` を使い、debug 可視化の表示項目を notebook 上で切り替えられる。
-現時点で切り替えられる項目:
-- HP バー
-- target line
-- terrain overlay text
-- frame index
+`examples/debug-visualization.ipynb` は debug animation の利用例である。
+現時点では `ipywidgets` による操作 UI は実装されておらず、描画関数へ渡す引数をコードセルで切り替える。
+
+可視化の主要機能は notebook の実行状態に依存させず、通常の Python API として提供する。
+notebook は教材、探索、利用例として扱う。
+
+### Local Web UI
+`apps/battle_viewer.py` は Streamlit によるローカル Web UI である。
+
+主な操作:
+- 2 つの unit group と unit 数の選択
+- 地形 form の選択
+- シミュレーション実行
+- 再生、一時停止、先頭から再生
+- 再生速度の選択
+- frame slider
+- HP、target line、地形補助値の表示切り替え
+- 表示中 frame の PNG download
+
+UI は戦闘ロジックや描画ロジックを実装せず、`BattleScenario` と
+`quiver_frame_debug()` を呼び出す interface として扱う。
+
+`Run simulation` は全 frame の計算後、frame 0 から表示上の自動再生を開始する。
+再生は保存済み frame の表示位置だけを進め、simulation 自体を再実行しない。
+
+### Static Rendering CLI
+`battlesim-render` は TOML scenario を実行し、指定 frame を画像へ保存する。
+既定では最終 frame を描画する。
+
+同梱 scenario:
+- `scenarios/clone-vs-droid.toml`
+
+### Visualization View Model
+`build_frame_view()` は構造化 NumPy frame を UI 非依存の `FrameView` へ変換する。
+各 `UnitView` は次の表示用情報を保持する。
+
+- 位置、向き、team、unit type
+- HP、最大 HP、HP 比率、生死
+- target index と target 座標
+- frame に存在する場合は地形補助値
 
 ### Planned Visualization Direction
 独自拡張では、通常表示とデバッグ表示を分けて扱う方針を取る。
@@ -432,6 +466,16 @@ NumPy の乱数分布をラップするクラス。
 - 地形由来: 地形高さ, 移動補正, 実効射程, 高低差ダメージ補正
 
 詳細方針は `docs/visualization-rules.md` を参照する。
+
+### Notebook-Independent Direction
+今後の可視化は次の層へ分離する。
+
+- simulation frame
+- UI framework に依存しない view model
+- Matplotlib renderer
+- CLI / ローカル Web UI / notebook などの interface
+
+既存の `sim_jupyter()` は後方互換性のため維持するが、主要な操作導線はローカル Web UI へ移す。
 
 ## Validation And Error Behavior
 
