@@ -1,5 +1,6 @@
 """UI-independent data model for battle visualizations."""
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 
 import numpy as np
@@ -37,6 +38,7 @@ class UnitView:
     hp: float
     max_hp: float
     hp_ratio: float
+    armor: float | None
     alive: bool
     target_index: int | None
     target_position: tuple[float, float] | None
@@ -57,12 +59,60 @@ class FrameView:
     has_terrain: bool
 
 
+@dataclass(frozen=True)
+class UnitParameterView:
+    """Display-ready parameter values linked to a numbered unit."""
+
+    number: int
+    team: str
+    unit_type: str
+    alive: bool
+    hp: float
+    max_hp: float
+    armor: float | None
+    target_number: int | None
+    z: float | None
+    move_factor: float | None
+    effective_range: float | None
+    damage_factor: float | None
+
+
 def advance_playback(frame_i: int, frame_count: int) -> tuple[int, bool]:
     """Advance one frame and report whether playback should continue."""
     if frame_count < 1:
         raise ValueError("frame_count must be at least 1")
     next_frame = min(frame_i + 1, frame_count - 1)
     return next_frame, next_frame < frame_count - 1
+
+
+def build_unit_parameter_views(
+    frame: FrameView,
+    *,
+    team_labels: Mapping[int, str] | None = None,
+    unit_type_labels: Mapping[int, str] | None = None,
+) -> tuple[UnitParameterView, ...]:
+    """Build the rows shown beside a numbered battle frame."""
+    team_labels = team_labels or {}
+    unit_type_labels = unit_type_labels or {}
+    return tuple(
+        UnitParameterView(
+            number=unit.index + 1,
+            team=team_labels.get(unit.team, str(unit.team)),
+            unit_type=unit_type_labels.get(unit.unit_type, str(unit.unit_type)),
+            alive=unit.alive,
+            hp=unit.hp,
+            max_hp=unit.max_hp,
+            armor=unit.armor,
+            target_number=(
+                unit.target_index + 1 if unit.target_index is not None else None
+            ),
+            z=unit.z,
+            move_factor=unit.move_factor,
+            effective_range=unit.effective_range,
+            damage_factor=unit.damage_factor,
+        )
+        for unit in frame.units
+    )
 
 
 def build_frame_view(frames: np.ndarray, frame_i: int = 0) -> FrameView:
@@ -82,6 +132,7 @@ def build_frame_view(frames: np.ndarray, frame_i: int = 0) -> FrameView:
     frame = frames[frame_index]
     max_hp = np.maximum(frames["hp"].max(axis=0), 1.0)
     has_terrain = _TERRAIN_FIELDS.issubset(field_names)
+    has_armor = "armor" in field_names
     units = []
 
     for unit_i in range(frame.shape[0]):
@@ -122,6 +173,7 @@ def build_frame_view(frames: np.ndarray, frame_i: int = 0) -> FrameView:
                 hp=hp,
                 max_hp=unit_max_hp,
                 hp_ratio=float(np.clip(hp / unit_max_hp, 0.0, 1.0)),
+                armor=(float(frame["armor"][unit_i]) if has_armor else None),
                 alive=hp > 0.0,
                 target_index=target_i,
                 target_position=target_position,

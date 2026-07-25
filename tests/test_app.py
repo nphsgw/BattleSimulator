@@ -15,6 +15,15 @@ class _Labels:
         return {0: "Army 1", 1: "Army 2"}
 
 
+class _Index:
+    def tolist(self) -> list[str]:
+        return ["Unit A", "Unit B"]
+
+
+class _Database:
+    index = _Index()
+
+
 class _FakeBattle:
     def __init__(self) -> None:
         dtype = np.dtype(
@@ -38,22 +47,22 @@ class _FakeBattle:
         self.sim_["team"] = [[0, 1], [0, 1], [0, 1]]
         self.T_ = None
         self.allegiances_ = _Labels()
+        self.db_ = _Database()
 
 
-def test_battle_viewer_loads_and_toggles_display_options():
+def test_battle_viewer_loads_display_options():
     app_path = Path("apps/battle_viewer.py")
     app = AppTest.from_file(app_path, default_timeout=10).run()
 
     assert not app.exception
     assert app.button(key="run").label == "Run simulation"
-    assert app.toggle(key="show_hp").value is True
-    assert app.toggle(key="show_target_lines").value is True
+    assert app.toggle(key="show_target_lines").value is False
     assert app.select_slider(key="playback_speed").value == 1.0
 
-    app.toggle(key="show_hp").set_value(False).run()
+    app.toggle(key="show_target_lines").set_value(True).run()
 
     assert not app.exception
-    assert app.toggle(key="show_hp").value is False
+    assert app.toggle(key="show_target_lines").value is True
 
 
 def test_advance_playback_moves_one_frame():
@@ -82,3 +91,5 @@ def test_battle_viewer_shows_playback_controls_for_frames():
     assert app.button(key="pause").label == "Pause"
     assert app.button(key="replay").label == "Replay"
     assert app.slider(key="playback_frame").max == 2
+    assert len(app.dataframe) == 1
+    assert app.dataframe[0].value["No."].tolist() == ["#1", "#2"]

@@ -88,6 +88,9 @@
 - [x] frame slider と overlay toggle を持つローカル Web UI を追加する
 - [x] Web UI の headless テストを追加する
 - [x] Web UI に速度調整可能な frame 再生と一時停止を追加する
+- [x] 戦闘画面へ固定 unit number を表示する
+- [x] 戦闘画面の横へ unit parameter panel を追加する
+- [x] HP と地形補助値を Web UI の戦闘画面へ重畳しない
 
 ### Phase 3: Migration
 - [x] README の主要な可視化導線を CLI / Web UI へ変更する

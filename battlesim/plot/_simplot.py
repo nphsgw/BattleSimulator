@@ -448,6 +448,7 @@ def quiver_frame_debug(
     show_hp: bool = True,
     show_target_lines: bool = True,
     show_terrain_text: bool = False,
+    show_unit_numbers: bool = False,
 ) -> tuple[plt.Figure, plt.Axes]:
     """
     Draws a single debug frame for notebook inspection.
@@ -463,6 +464,7 @@ def quiver_frame_debug(
     plot_span = max(xmax - xmin, ymax - ymin, 1.0)
     hp_bar_width = plot_span * 0.04
     hp_bar_offset = plot_span * 0.015
+    number_offset = plot_span * 0.018
 
     for team, unit_type in combs:
         team_type_i = np.logical_and(frame["team"] == team, frame["utype"] == unit_type)
@@ -495,12 +497,31 @@ def quiver_frame_debug(
             )
 
     for unit in frame_view.units:
-        if not unit.alive:
-            continue
-
         unit_color = allegiance_color[unit.team]
         x_i = unit.x
         y_i = unit.y
+
+        if show_unit_numbers:
+            ax.text(
+                x_i + number_offset,
+                y_i + number_offset,
+                f"#{unit.index + 1}",
+                color=unit_color,
+                fontsize=7,
+                fontweight="bold",
+                ha="left",
+                va="bottom",
+                zorder=8,
+                bbox={
+                    "boxstyle": "round,pad=0.12",
+                    "facecolor": "white",
+                    "alpha": 0.75,
+                    "edgecolor": "none",
+                },
+            )
+
+        if not unit.alive:
+            continue
 
         if show_target_lines and unit.target_position is not None:
             target_x, target_y = unit.target_position

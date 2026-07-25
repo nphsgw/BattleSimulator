@@ -12,9 +12,11 @@ from ._battle import Battle  # noqa: F401
 from .distrib import Composite, Sampling  # noqa: F401
 from .plot import (  # noqa: F401
     FrameView,
+    UnitParameterView,
     UnitView,
     advance_playback,
     build_frame_view,
+    build_unit_parameter_views,
     quiver_fight,
     quiver_fight_debug,
     quiver_frame_debug,

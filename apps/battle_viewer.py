@@ -8,6 +8,33 @@ import streamlit as st
 import battlesim as bsm
 
 
+def _optional_round(value: float | None) -> float | None:
+    return round(value, 2) if value is not None else None
+
+
+def _parameter_rows(
+    parameters: tuple[bsm.UnitParameterView, ...],
+) -> list[dict[str, str | float | None]]:
+    return [
+        {
+            "No.": f"#{unit.number}",
+            "Team": unit.team,
+            "Type": unit.unit_type,
+            "State": "Alive" if unit.alive else "Dead",
+            "HP": f"{unit.hp:.1f} / {unit.max_hp:.1f}",
+            "Armor": _optional_round(unit.armor),
+            "Target": (
+                f"#{unit.target_number}" if unit.target_number is not None else "—"
+            ),
+            "Height": _optional_round(unit.z),
+            "Move": _optional_round(unit.move_factor),
+            "Range": _optional_round(unit.effective_range),
+            "Damage": _optional_round(unit.damage_factor),
+        }
+        for unit in parameters
+    ]
+
+
 def _default_index(options: list[str], name: str, fallback: int) -> int:
     try:
         return options.index(name.lower())
@@ -92,16 +119,10 @@ def main() -> None:
         run_simulation = st.button("Run simulation", type="primary", key="run")
 
     with display_column:
-        show_hp = st.toggle("Show HP", value=True, key="show_hp")
         show_target_lines = st.toggle(
             "Show target lines",
-            value=True,
-            key="show_target_lines",
-        )
-        show_terrain_text = st.toggle(
-            "Show terrain values",
             value=False,
-            key="show_terrain_text",
+            key="show_target_lines",
         )
         playback_speed = st.select_slider(
             "Playback speed",
@@ -196,26 +217,61 @@ def main() -> None:
             f"Frame {frame_i + 1} / {frames.shape[0]}"
             + (" · Playing" if st.session_state["playback_playing"] else " · Paused")
         )
-        figure, _axes = bsm.quiver_frame_debug(
-            frames,
-            frame_i=frame_i,
-            terrain=battle.T_,
-            allegiance_label=battle.allegiances_.to_dict(),
-            show_hp=show_hp,
-            show_target_lines=show_target_lines,
-            show_terrain_text=show_terrain_text,
+        frame_view = bsm.build_frame_view(frames, frame_i)
+        team_labels = battle.allegiances_.to_dict()
+        unit_type_labels = dict(enumerate(battle.db_.index.tolist()))
+        parameter_views = bsm.build_unit_parameter_views(
+            frame_view,
+            team_labels=team_labels,
+            unit_type_labels=unit_type_labels,
         )
-        st.pyplot(figure)
 
-        image = BytesIO()
-        figure.savefig(image, format="png")
-        plt.close(figure)
-        st.download_button(
-            "Download current frame",
-            data=image.getvalue(),
-            file_name=f"battle-frame-{frame_i}.png",
-            mime="image/png",
-        )
+        battle_column, parameter_column = st.columns([3, 2], gap="large")
+        with battle_column:
+            st.subheader("Battle")
+            figure, _axes = bsm.quiver_frame_debug(
+                frames,
+                frame_i=frame_i,
+                terrain=battle.T_,
+                allegiance_label=team_labels,
+                show_hp=False,
+                show_target_lines=show_target_lines,
+                show_terrain_text=False,
+                show_unit_numbers=True,
+            )
+            st.pyplot(figure)
+
+            image = BytesIO()
+            figure.savefig(image, format="png")
+            plt.close(figure)
+            st.download_button(
+                "Download current frame",
+                data=image.getvalue(),
+                file_name=f"battle-frame-{frame_i}.png",
+                mime="image/png",
+            )
+
+        with parameter_column:
+            st.subheader("Unit parameters")
+            st.dataframe(
+                _parameter_rows(parameter_views),
+                column_order=(
+                    "No.",
+                    "Team",
+                    "Type",
+                    "State",
+                    "HP",
+                    "Armor",
+                    "Target",
+                    "Height",
+                    "Move",
+                    "Range",
+                    "Damage",
+                ),
+                hide_index=True,
+                height=600,
+                width="stretch",
+            )
 
         if st.session_state.pop("playback_refresh", False) or reached_end:
             st.rerun()

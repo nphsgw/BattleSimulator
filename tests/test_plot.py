@@ -104,3 +104,19 @@ def test_quiver_frame_debug_returns_figure_and_axes():
     assert fig is not None
     assert ax is not None
     plt.close(fig)
+
+
+def test_quiver_frame_debug_can_label_units_by_number():
+    battle = _build_small_battle()
+
+    fig, ax = bsm.quiver_frame_debug(
+        battle.sim_,
+        frame_i=0,
+        show_hp=False,
+        show_target_lines=False,
+        show_unit_numbers=True,
+    )
+
+    labels = {text.get_text() for text in ax.texts}
+    assert labels == {f"#{unit_i + 1}" for unit_i in range(battle.sim_.shape[1])}
+    plt.close(fig)

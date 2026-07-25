@@ -428,7 +428,7 @@ notebook は教材、探索、利用例として扱う。
 - 再生、一時停止、先頭から再生
 - 再生速度の選択
 - frame slider
-- HP、target line、地形補助値の表示切り替え
+- target line の表示切り替え
 - 表示中 frame の PNG download
 
 UI は戦闘ロジックや描画ロジックを実装せず、`BattleScenario` と
@@ -436,6 +436,23 @@ UI は戦闘ロジックや描画ロジックを実装せず、`BattleScenario` 
 
 `Run simulation` は全 frame の計算後、frame 0 から表示上の自動再生を開始する。
 再生は保存済み frame の表示位置だけを進め、simulation 自体を再実行しない。
+
+戦闘画面には unit index を基準にした `#1`, `#2`, ... の番号を表示する。
+同じ番号を右側の unit parameter panel で使用し、現在 frame の次の情報を表示する。
+
+- team
+- unit type
+- alive / dead
+- HP
+- armor
+- target number
+- `z`
+- `move_factor`
+- `effective_range`
+- `damage_factor`
+
+ローカル Web UI では HP bar と terrain text を戦闘画面へ重畳しない。
+これらは既存描画 API の互換機能としては維持する。
 
 ### Static Rendering CLI
 `battlesim-render` は TOML scenario を実行し、指定 frame を画像へ保存する。

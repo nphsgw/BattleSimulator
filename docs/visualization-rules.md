@@ -51,7 +51,9 @@ view model は UI framework に依存させず、固定 frame を使った単体
 
 ### Debug View
 - 目的は個々のユニット判断や地形補正を解析しやすくすること
-- 通常表示に加えて、HP、target line、地形補正などの補助情報を重ねる
+- 戦闘画面とユニットパラメータ画面を横に並べる
+- 戦闘画面にはユニット番号を表示し、パラメータ画面の番号と対応させる
+- HP、target、地形補正などの数値情報はパラメータ画面へ表示する
 - 実装上は通常表示とは別の描画関数として切り出すことを優先する
 
 ## Unit-Level Information To Show
@@ -86,9 +88,29 @@ view model は UI framework に依存させず、固定 frame を使った単体
 
 ## Visibility Policy
 - 通常表示では情報量を抑える
-- デバッグ表示では overlay の on/off を切り替えられる構成を優先する
+- ローカル Web UI の戦闘画面では、HP バーと地形補助テキストをユニットへ重畳しない
+- ローカル Web UI の戦闘画面では、固定されたユニット番号を重畳する
+- target line は必要時だけ表示できるようにする
 - 線、ラベル、バーは地形背景より前面に描画する
 - 背景地形と overlay が干渉しすぎないよう、透明度を前提に調整する
+
+## Unit Parameter Panel
+- 戦闘画面の右側に、現在 frame の全ユニットを表示する専用領域を置く
+- 行は unit index の昇順とし、表示番号は `unit index + 1` とする
+- unit index は simulation frame 内で固定されるため、再生中も番号を維持する
+- 少なくとも次を表示する
+  - unit number
+  - team
+  - unit type
+  - alive / dead
+  - current HP / initial HP
+  - current armor
+  - target unit number
+  - terrain height
+  - movement factor
+  - effective range
+  - damage factor
+- ユニット数が多い場合はパネル内をスクロール可能にする
 
 ## Playback Policy
 - シミュレーション計算と再生速度を分離する
@@ -125,6 +147,9 @@ view model は UI framework に依存させず、固定 frame を使った単体
 - バー長はそのユニットの初期 HP を基準に正規化する
 - 色は HP 比率に応じて緑、黄、赤へ変化させる
 - 死亡ユニットでは HP バーを消す
+
+この HP overlay は `quiver_fight_debug()` の互換機能として維持する。
+ローカル Web UI では使用せず、unit parameter panel に数値を表示する。
 
 ### Visibility Toggles
 - debug view では `show_hp` と `show_target_lines` を切り替え可能にする

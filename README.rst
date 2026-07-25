@@ -102,6 +102,11 @@ play/pause/replay controls, a frame slider, debug overlay switches, and PNG
 download without requiring a notebook. A completed simulation starts playback
 from the first frame at 1 frame per second by default.
 
+During playback, the battle view labels units with stable numbers such as
+``#1`` and ``#2``. The parameter panel beside it uses the same numbers to show
+each unit's team, type, state, HP, armor, target, and terrain-derived values
+without covering the battle view.
+
 For a non-interactive workflow, render a TOML scenario directly to an image:
 
 .. code-block:: console

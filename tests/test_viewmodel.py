@@ -15,6 +15,7 @@ def fixed_frames() -> np.ndarray:
             ("ddx", "f4"),
             ("ddy", "f4"),
             ("hp", "f4"),
+            ("armor", "f4"),
             ("target", "i4"),
             ("team", "u1"),
             ("utype", "u1"),
@@ -30,6 +31,7 @@ def fixed_frames() -> np.ndarray:
     frames["y"] = [[2.0, 5.0], [3.0, 4.0]]
     frames["ddx"] = 1.0
     frames["hp"] = [[10.0, 8.0], [5.0, 0.0]]
+    frames["armor"] = [[4.0, 2.0], [1.0, 0.0]]
     frames["target"] = [[1, 0], [1, 0]]
     frames["team"] = [[0, 1], [0, 1]]
     frames["utype"] = [[2, 3], [2, 3]]
@@ -63,3 +65,24 @@ def test_build_frame_view_rejects_missing_fields():
 
     with pytest.raises(ValueError, match="missing visualization fields"):
         bsm.build_frame_view(frames)
+
+
+def test_build_unit_parameter_views_matches_numbered_units(
+    fixed_frames: np.ndarray,
+):
+    frame = bsm.build_frame_view(fixed_frames, frame_i=1)
+
+    parameters = bsm.build_unit_parameter_views(
+        frame,
+        team_labels={0: "Droids", 1: "Clones"},
+        unit_type_labels={2: "B1", 3: "Clone Trooper"},
+    )
+
+    assert parameters[0].number == 1
+    assert parameters[0].team == "Droids"
+    assert parameters[0].unit_type == "B1"
+    assert parameters[0].target_number == 2
+    assert parameters[0].hp == pytest.approx(5.0)
+    assert parameters[0].armor == pytest.approx(1.0)
+    assert parameters[1].number == 2
+    assert parameters[1].alive is False
