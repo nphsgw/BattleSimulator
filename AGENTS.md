@@ -63,6 +63,8 @@ BattleSimulator を、明示的な戦術入力から再現可能な結果分布�
 ## Validation Gates
 - Python変更後は原則 `make check` を実行する
 - `make check` はRuff lint、format check、全体ty、mypy strict、pytestを含む
+- 通常の `git commit` でもpre-commit hookから `make check` を毎回実行する
+- dependency sync後にhookが未導入なら `make install-hooks` を実行する
 - 入力変更では正常系に加え、境界値、NaN/無限大、boolと数値の混同、
   未知キー、cross-field制約を検査する
 - 広い入力空間にはHypothesisを使う

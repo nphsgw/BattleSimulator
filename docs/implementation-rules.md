@@ -60,4 +60,7 @@
 - `make check` は Ruff lint、format check、全体ty、mypy strict、pytestの
   全てを実行する
 - CIも `make check` と同じ対象を検査し、一部ファイルだけを対象にして成功扱いしない
-- ローカルhookは補助とし、共有リポジトリでの強制はCIの必須status checkで行う
+- `pre-commit` stageでは変更ファイルの種類にかかわらず `make check` を毎回実行する
+- cloneまたはdependency sync後は `make install-hooks` でGit hookを導入する
+- Gitの `--no-verify` によるローカル回避は完全には禁止できないため、
+  共有リポジトリでの最終強制はCIの必須status checkで行う
