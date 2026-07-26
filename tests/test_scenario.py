@@ -98,3 +98,49 @@ def test_army_spec_preserves_surrogate_doctrine_weights():
 
     assert composite.rolling_ai == "highest_threat"
     assert composite.doctrine_weights == (0.1, 0.2, 0.6, 0.1)
+
+
+def test_explicit_initial_positions_are_used_without_placement_randomness():
+    scenario = bsm.BattleScenario(
+        armies=(
+            bsm.ArmySpec(
+                "B1 battledroid",
+                2,
+                initial_positions=((1.0, 2.0), (1.5, 3.0)),
+            ),
+            bsm.ArmySpec(
+                "Clone Trooper",
+                2,
+                initial_positions=((8.0, 7.0), (8.5, 6.0)),
+            ),
+        ),
+        bounds=(0.0, 10.0, 0.0, 10.0),
+        seed=99,
+    )
+
+    battle = scenario.run()
+
+    assert battle.sim_ is not None
+    assert battle.result_ is not None
+    assert battle.sim_[0]["x"].tolist() == [1.0, 1.5, 8.0, 8.5]
+    assert battle.sim_[0]["y"].tolist() == [2.0, 3.0, 7.0, 6.0]
+    assert "placement" not in battle.result_.randomized_subsystems
+
+
+def test_explicit_initial_positions_participate_in_scenario_id():
+    def run_with_x(x: float) -> str:
+        scenario = bsm.BattleScenario(
+            armies=(
+                bsm.ArmySpec("B1 battledroid", 1, initial_positions=((x, 2.0),)),
+                bsm.ArmySpec(
+                    "Clone Trooper",
+                    1,
+                    initial_positions=((8.0, 7.0),),
+                ),
+            )
+        )
+        battle = scenario.run()
+        assert battle.result_ is not None
+        return battle.result_.scenario_id
+
+    assert run_with_x(1.0) != run_with_x(1.5)

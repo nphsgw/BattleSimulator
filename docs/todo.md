@@ -123,3 +123,9 @@ unit index 順の逐次解決を、代理モデルが登録順バイアスとし
 9. [x] terrain、LOS、cover、collision
 10. [x] objective等の追加戦術
 11. [x] 感度分析、妥当性検証、代理モデル用export
+
+### Local Viewer Input
+
+- [x] Custom battleの初期配置を実行前に数値表から編集できるようにする
+- [x] 選択unitを戦場上のマウスクリックで配置できるようにする
+- [x] 明示配置を入力検証とscenario IDへ接続する

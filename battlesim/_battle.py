@@ -280,16 +280,21 @@ class Battle:
                 matrix["stable_id"][unit_index] = int.from_bytes(
                     hashlib.sha256(identity).digest()[:8], "little"
                 )
-                matrix["x"][unit_index] = self._sample_positions(
-                    comp.pos,
-                    1,
-                    streams.keyed_generator("placement", f"{identity_text}:x"),
-                )[0]
-                matrix["y"][unit_index] = self._sample_positions(
-                    comp.pos,
-                    1,
-                    streams.keyed_generator("placement", f"{identity_text}:y"),
-                )[0]
+                if comp.initial_positions is None:
+                    matrix["x"][unit_index] = self._sample_positions(
+                        comp.pos,
+                        1,
+                        streams.keyed_generator("placement", f"{identity_text}:x"),
+                    )[0]
+                    matrix["y"][unit_index] = self._sample_positions(
+                        comp.pos,
+                        1,
+                        streams.keyed_generator("placement", f"{identity_text}:y"),
+                    )[0]
+                else:
+                    x, y = comp.initial_positions[offset]
+                    matrix["x"][unit_index] = x
+                    matrix["y"][unit_index] = y
             occurrence[key] = first_ordinal + n
 
         # Preserve configured bounds, expanding only where positions fall outside.
@@ -384,6 +389,7 @@ class Battle:
                     "name": comp.name.casefold(),
                     "n": comp.n,
                     "position": repr(comp.pos),
+                    "initial_positions": comp.initial_positions,
                     "init_ai": comp.init_ai,
                     "rolling_ai": comp.rolling_ai,
                     "decision_ai": comp.decision_ai,
@@ -394,6 +400,7 @@ class Battle:
                     key=lambda item: (
                         str(self.db_.loc[item.name.lower(), "Allegiance"]),
                         item.name.casefold(),
+                        item.initial_positions or (),
                         repr(item.pos),
                     ),
                 )
@@ -743,7 +750,11 @@ class Battle:
             streams=streams,
             scenario_id=self._scenario_id(selected_rules),
             simulator_version=__version__,
-            randomized_subsystems=("placement", "terrain", "combat"),
+            randomized_subsystems=(
+                ("terrain", "combat")
+                if all(comp.initial_positions is not None for comp in self.composition_)
+                else ("placement", "terrain", "combat")
+            ),
             scenario_features=self._scenario_features(matrix, selected_rules),
             team_labels={
                 int(team): str(label) for team, label in self.allegiances_.items()
@@ -823,7 +834,10 @@ class Battle:
                     trial_seed=trial_seed,
                     randomized=set(randomize),
                 )
-                if "placement" in randomize:
+                randomize_placement = "placement" in randomize and any(
+                    comp.initial_positions is None for comp in self.composition_
+                )
+                if randomize_placement:
                     self._presim(streams)
                     randomized_matrix = self.M_
                     assert randomized_matrix is not None
@@ -842,7 +856,11 @@ class Battle:
                     scenario_id=self._scenario_id(),
                     simulator_version=__version__,
                     record_events=False,
-                    randomized_subsystems=randomize,
+                    randomized_subsystems=tuple(
+                        name
+                        for name in randomize
+                        if name != "placement" or randomize_placement
+                    ),
                     scenario_features=self._scenario_features(matrix, self.rules),
                     team_labels={
                         int(team): str(label)

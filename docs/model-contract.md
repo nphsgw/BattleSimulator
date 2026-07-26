@@ -7,6 +7,10 @@ The canonical scenario contains armies, battlefield bounds, terrain, seed,
 accuracy, dodge, movement speed, range, attack interval, and radius. Numeric units
 are interpreted consistently within a scenario; one tick is one second.
 
+Each army may provide one explicit `(x, y)` position per unit. Explicit positions
+replace placement-distribution sampling, must be finite and inside the battlefield
+bounds, and participate in `scenario_id`.
+
 `scenario_id` is the SHA-256 digest of canonical JSON with sorted keys and excludes
 the trial seed. It includes the unit-stat values used by the scenario. `trial_id`
 combines the scenario ID, seed, rules version, and randomized subsystem set.

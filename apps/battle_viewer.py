@@ -2,14 +2,123 @@
 
 from io import BytesIO
 from pathlib import Path
+from typing import cast
 
 import matplotlib.pyplot as plt
+import pandas as pd
 import streamlit as st
+from streamlit.components.v2 import component
 
 import battlesim as bsm
 
 _DAMAGE_DEMO_SCENARIO = (
     Path(__file__).resolve().parents[1] / "scenarios" / "damage-demo.toml"
+)
+_BATTLE_BOUNDS = (0.0, 10.0, 0.0, 10.0)
+
+_PLACEMENT_COMPONENT = component(
+    "battle_placement_map",
+    html='<div id="placement-root"></div>',
+    css="""
+        #placement-root { width: 100%; }
+        svg {
+            width: 100%;
+            max-height: 520px;
+            border: 1px solid var(--st-border-color);
+            border-radius: 0.5rem;
+            background: var(--st-secondary-background-color);
+            cursor: crosshair;
+            touch-action: none;
+        }
+        .grid { stroke: var(--st-border-color); stroke-width: 0.025; }
+        .axis-label { fill: var(--st-text-color); font-size: 0.32px; }
+        .unit { stroke: white; stroke-width: 0.08; }
+        .selected { stroke: #ffbf00; stroke-width: 0.16; }
+        .unit-label {
+            fill: white;
+            font-size: 0.3px;
+            font-weight: 700;
+            text-anchor: middle;
+            dominant-baseline: central;
+            pointer-events: none;
+        }
+    """,
+    js="""
+        export default function(component) {
+            const { data, parentElement, setTriggerValue } = component;
+            const root = parentElement.querySelector("#placement-root");
+            const ns = "http://www.w3.org/2000/svg";
+            const svg = document.createElementNS(ns, "svg");
+            svg.setAttribute("viewBox", "-0.55 -0.25 11 10.8");
+            svg.setAttribute("aria-label", "Initial unit placement map");
+
+            for (let i = 0; i <= 10; i += 1) {
+                for (const vertical of [true, false]) {
+                    const line = document.createElementNS(ns, "line");
+                    line.setAttribute("class", "grid");
+                    line.setAttribute("x1", vertical ? i : 0);
+                    line.setAttribute("x2", vertical ? i : 10);
+                    line.setAttribute("y1", vertical ? 0 : i);
+                    line.setAttribute("y2", vertical ? 10 : i);
+                    svg.appendChild(line);
+                }
+                const xLabel = document.createElementNS(ns, "text");
+                xLabel.setAttribute("class", "axis-label");
+                xLabel.setAttribute("x", i);
+                xLabel.setAttribute("y", 10.45);
+                xLabel.setAttribute("text-anchor", "middle");
+                xLabel.textContent = String(i);
+                svg.appendChild(xLabel);
+
+                const yLabel = document.createElementNS(ns, "text");
+                yLabel.setAttribute("class", "axis-label");
+                yLabel.setAttribute("x", -0.18);
+                yLabel.setAttribute("y", 10 - i + 0.1);
+                yLabel.setAttribute("text-anchor", "end");
+                yLabel.textContent = String(i);
+                svg.appendChild(yLabel);
+            }
+
+            data.positions.forEach((position, index) => {
+                const circle = document.createElementNS(ns, "circle");
+                circle.setAttribute(
+                    "class",
+                    index === data.selected ? "unit selected" : "unit"
+                );
+                circle.setAttribute("cx", position.x);
+                circle.setAttribute("cy", 10 - position.y);
+                circle.setAttribute("r", index === data.selected ? 0.34 : 0.27);
+                circle.setAttribute(
+                    "fill",
+                    position.team === "Army 1" ? "#e05252" : "#3977d4"
+                );
+                svg.appendChild(circle);
+
+                const label = document.createElementNS(ns, "text");
+                label.setAttribute("class", "unit-label");
+                label.setAttribute("x", position.x);
+                label.setAttribute("y", 10 - position.y);
+                label.textContent = String(index + 1);
+                svg.appendChild(label);
+            });
+
+            svg.onpointerdown = (event) => {
+                const point = svg.createSVGPoint();
+                point.x = event.clientX;
+                point.y = event.clientY;
+                const local = point.matrixTransform(svg.getScreenCTM().inverse());
+                const x = Math.max(0, Math.min(10, local.x));
+                const y = Math.max(0, Math.min(10, 10 - local.y));
+                setTriggerValue("place", {
+                    x: Math.round(x * 100) / 100,
+                    y: Math.round(y * 100) / 100,
+                    event_id: `${Date.now()}-${event.pointerId}`,
+                });
+            };
+
+            root.replaceChildren(svg);
+        }
+    """,
 )
 
 
@@ -53,20 +162,28 @@ def _build_scenario(
     right_unit: str,
     right_count: int,
     terrain: str,
+    placement_rows: list[dict[str, object]],
 ) -> bsm.BattleScenario:
+    validated_rows = bsm.validate_placement_rows(
+        placement_rows,
+        bounds=_BATTLE_BOUNDS,
+    )
+    left_positions = tuple((row["x"], row["y"]) for row in validated_rows[:left_count])
+    right_positions = tuple((row["x"], row["y"]) for row in validated_rows[left_count:])
     return bsm.BattleScenario(
         armies=(
             bsm.ArmySpec(
                 left_unit,
                 left_count,
-                position_parameters=(1.5, 0.6),
+                initial_positions=left_positions,
             ),
             bsm.ArmySpec(
                 right_unit,
                 right_count,
-                position_parameters=(7.5, 0.6),
+                initial_positions=right_positions,
             ),
         ),
+        bounds=_BATTLE_BOUNDS,
         terrain=None if terrain == "flat" else terrain,
         terrain_resolution=0.2,
     )
@@ -132,7 +249,6 @@ def main() -> None:
                 "Armor 20 → 10 → 0 の後、HP 30 → 20 → 10 → 0 と減る"
                 "5 tickの1対1デモです。"
             )
-        run_simulation = st.button("Run simulation", type="primary", key="run")
 
     with display_column:
         show_target_lines = st.toggle(
@@ -148,6 +264,119 @@ def main() -> None:
             key="playback_speed",
         )
 
+    placement_rows: list[dict[str, object]] = []
+    if scenario_preset == "Custom battle":
+        placement_signature = (
+            left_unit,
+            int(left_count),
+            right_unit,
+            int(right_count),
+        )
+        if st.session_state.get("placement_signature") != placement_signature:
+            st.session_state["placement_signature"] = placement_signature
+            st.session_state["placement_rows"] = bsm.initial_placement_rows(
+                *placement_signature
+            )
+            st.session_state["placement_revision"] = (
+                int(st.session_state.get("placement_revision", 0)) + 1
+            )
+
+        st.subheader("Initial placement")
+        st.caption(
+            "X/Yを直接編集するか、unitを選んで戦場をクリックしてください。"
+            "座標範囲は0〜10です。"
+        )
+        editor_column, map_column = st.columns([3, 4], gap="large")
+        with editor_column:
+            placement_frame = pd.DataFrame(st.session_state["placement_rows"])
+            edited_frame = st.data_editor(
+                placement_frame,
+                column_order=("No.", "Team", "Type", "X", "Y"),
+                column_config={
+                    "No.": st.column_config.NumberColumn("No.", disabled=True),
+                    "Team": st.column_config.TextColumn("Team", disabled=True),
+                    "Type": st.column_config.TextColumn("Type", disabled=True),
+                    "X": st.column_config.NumberColumn(
+                        "X",
+                        min_value=_BATTLE_BOUNDS[0],
+                        max_value=_BATTLE_BOUNDS[1],
+                        step=0.1,
+                        format="%.2f",
+                        required=True,
+                    ),
+                    "Y": st.column_config.NumberColumn(
+                        "Y",
+                        min_value=_BATTLE_BOUNDS[2],
+                        max_value=_BATTLE_BOUNDS[3],
+                        step=0.1,
+                        format="%.2f",
+                        required=True,
+                    ),
+                },
+                disabled=("No.", "Team", "Type"),
+                hide_index=True,
+                width="stretch",
+                height=420,
+                key=f"placement_editor_{st.session_state['placement_revision']}",
+            )
+            placement_rows = cast(
+                list[dict[str, object]],
+                edited_frame.to_dict(orient="records"),
+            )
+            st.session_state["placement_rows"] = placement_rows
+            unit_labels = [
+                f"#{row['No.']} · {row['Team']} · {row['Type']}"
+                for row in placement_rows
+            ]
+            selected_label = st.selectbox(
+                "Mouse placement unit",
+                unit_labels,
+                key="placement_unit",
+            )
+            selected_index = unit_labels.index(selected_label)
+
+        with map_column:
+            try:
+                validated_positions = bsm.validate_placement_rows(
+                    placement_rows,
+                    bounds=_BATTLE_BOUNDS,
+                )
+            except ValueError as error:
+                st.error(str(error))
+            else:
+                placement_result = _PLACEMENT_COMPONENT(
+                    data={
+                        "selected": selected_index,
+                        "positions": [
+                            {
+                                "x": position["x"],
+                                "y": position["y"],
+                                "team": placement_rows[index]["Team"],
+                            }
+                            for index, position in enumerate(validated_positions)
+                        ],
+                    },
+                    key="placement_map",
+                    height=520,
+                    on_place_change=lambda: None,
+                )
+                placed = placement_result.place
+                if placed and placed.get("event_id") != st.session_state.get(
+                    "last_placement_event"
+                ):
+                    st.session_state["last_placement_event"] = placed["event_id"]
+                    st.session_state["placement_rows"] = bsm.apply_mouse_placement(
+                        placement_rows,
+                        selected_index,
+                        placed.get("x"),
+                        placed.get("y"),
+                        bounds=_BATTLE_BOUNDS,
+                    )
+                    st.session_state["placement_revision"] += 1
+                    st.rerun()
+
+    run_simulation = st.button("Run simulation", type="primary", key="run")
+
     if run_simulation:
         if scenario_preset == "Damage demo":
             scenario = bsm.BattleScenario.from_toml(_DAMAGE_DEMO_SCENARIO)
@@ -158,6 +387,7 @@ def main() -> None:
                 right_unit,
                 int(right_count),
                 terrain,
+                placement_rows,
             )
         try:
             battle = scenario.run()

@@ -98,6 +98,15 @@ view model は UI framework に依存させず、固定 frame を使った単体
 - 線、ラベル、バーは地形背景より前面に描画する
 - 背景地形と overlay が干渉しすぎないよう、透明度を前提に調整する
 
+## Pre-Simulation Placement Editor
+
+- Custom battleでは、シミュレーション実行前に全unitの初期座標を表示する
+- `X`, `Y` の数値表を直接編集できるようにする
+- unitを選択して戦場上をクリックする操作でも、同じ座標表を更新できるようにする
+- 数値入力とマウス入力は同じ検証経路を使用し、有限値とboundsを検査する
+- 編集済み座標をframe 0へそのまま渡し、実行時に配置分布で再生成しない
+- unit番号、team、unit typeは編集不可とし、どのunitを移動したか追跡できるようにする
+
 ## Unit Parameter Panel
 - 戦闘画面の右側に、現在 frame の全ユニットを表示する専用領域を置く
 - 行は unit index の昇順とし、表示番号は `unit index + 1` とする

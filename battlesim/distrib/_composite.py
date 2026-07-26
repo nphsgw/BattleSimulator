@@ -32,6 +32,7 @@ class Composite:
             0.5,
             0.1,
         ),
+        initial_positions: tuple[tuple[float, float], ...] | None = None,
     ) -> None:
         self.name = name
         self.n = n
@@ -43,6 +44,18 @@ class Composite:
         self.init_ai = init_ai
         self.rolling_ai = rolling_ai
         self.decision_ai = decision_ai
+        self.initial_positions = initial_positions
+        if initial_positions is not None:
+            if len(initial_positions) != n:
+                raise ValueError("initial_positions must contain exactly n positions")
+            if any(len(position) != 2 for position in initial_positions):
+                raise ValueError("each initial position must contain x and y")
+            if not all(
+                math.isfinite(value)
+                for position in initial_positions
+                for value in position
+            ):
+                raise ValueError("initial_positions must be finite")
         if len(doctrine_weights) != 4:
             raise ValueError("doctrine_weights must contain four values")
         if any(
@@ -63,5 +76,6 @@ class Composite:
             f"Composite('{self.name}', n={self.n}, pos={self.pos}, "
             + f"init_ai='{self.init_ai}', rolling_ai='{self.rolling_ai}', "
             + f"decision_ai='{self.decision_ai}', "
+            + f"initial_positions={self.initial_positions}, "
             + f"doctrine_weights={self.doctrine_weights})"
         )

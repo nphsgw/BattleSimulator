@@ -242,8 +242,8 @@ requires-dist = [
     { name = "pydantic", specifier = ">=2.12" },
     { name = "pytest", marker = "extra == 'all'", specifier = ">=9.0.2" },
     { name = "ruff", marker = "extra == 'all'", specifier = ">=0.15.6" },
-    { name = "streamlit", marker = "extra == 'all'", specifier = ">=1.40" },
-    { name = "streamlit", marker = "extra == 'app'", specifier = ">=1.40" },
+    { name = "streamlit", marker = "extra == 'all'", specifier = ">=1.60" },
+    { name = "streamlit", marker = "extra == 'app'", specifier = ">=1.60" },
     { name = "tqdm", marker = "extra == 'all'", specifier = ">=4.67.3" },
     { name = "ty", marker = "extra == 'all'" },
 ]

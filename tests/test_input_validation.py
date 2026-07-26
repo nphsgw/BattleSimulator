@@ -131,3 +131,35 @@ def test_direct_domain_construction_rejects_non_finite_values() -> None:
 def test_direct_rule_flags_must_be_booleans() -> None:
     with pytest.raises(TypeError, match="booleans"):
         bsm.BattleRules(line_of_sight=cast(Any, 1))
+
+
+def test_initial_positions_must_match_army_count() -> None:
+    with pytest.raises(ValidationError, match="exactly count"):
+        bsm.ArmySpec.from_mapping(
+            {
+                "name": "Clone Trooper",
+                "count": 2,
+                "initial_positions": [{"x": 1.0, "y": 2.0}],
+            }
+        )
+
+
+@pytest.mark.parametrize("value", [math.nan, math.inf, -math.inf])
+def test_initial_positions_must_be_finite(value: float) -> None:
+    with pytest.raises(ValidationError):
+        bsm.ArmySpec.from_mapping(
+            {
+                "name": "Clone Trooper",
+                "count": 1,
+                "initial_positions": [{"x": value, "y": 2.0}],
+            }
+        )
+
+
+def test_initial_positions_must_be_inside_scenario_bounds() -> None:
+    scenario = valid_scenario()
+    armies = cast(list[dict[str, object]], scenario["armies"])
+    armies[0]["initial_positions"] = [{"x": -0.1, "y": 2.0}]
+
+    with pytest.raises(ValidationError, match="must be inside scenario bounds"):
+        bsm.BattleScenario.from_mapping(scenario)

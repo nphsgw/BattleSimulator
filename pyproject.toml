@@ -40,14 +40,14 @@ all = [
     "black>=26.3.1",
     "ruff>=0.15.6",
     "ty",
-    "streamlit>=1.40",
+    "streamlit>=1.60",
     "mypy>=2.3",
     "hypothesis>=6.0",
     "pandas-stubs>=3.0",
     "pre-commit>=4.0",
 ]
 notebook = ["jupyter>=1.1.1", "ipywidgets>=8.1.7"]
-app = ["streamlit>=1.40"]
+app = ["streamlit>=1.60"]
 
 [project.scripts]
 battlesim-render = "battlesim.cli:main"
@@ -89,6 +89,7 @@ files = [
     "battlesim/scenario.py",
     "battlesim/randomness.py",
     "battlesim/dataset.py",
+    "battlesim/placement.py",
     "battlesim/validation.py",
     "battlesim/plot/_viewmodel.py",
     "tests/test_input_validation.py",

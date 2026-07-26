@@ -59,6 +59,9 @@ def test_battle_viewer_loads_display_options():
     assert app.button(key="run").label == "Run simulation"
     assert app.toggle(key="show_target_lines").value is False
     assert app.select_slider(key="playback_speed").value == 1.0
+    assert len(app.dataframe) == 1
+    assert app.dataframe[0].key == "placement_editor_1"
+    assert app.selectbox(key="placement_unit").value.startswith("#1")
 
     app.toggle(key="show_target_lines").set_value(True).run()
 
@@ -125,5 +128,36 @@ def test_battle_viewer_shows_playback_controls_for_frames():
     assert app.button(key="pause").label == "Pause"
     assert app.button(key="replay").label == "Replay"
     assert app.slider(key="playback_frame").max == 2
-    assert len(app.dataframe) == 1
-    assert app.dataframe[0].value["No."].tolist() == ["#1", "#2"]
+    assert len(app.dataframe) == 2
+    assert app.dataframe[1].value["No."].tolist() == ["#1", "#2"]
+
+
+def test_placement_rows_can_be_changed_by_mouse_coordinates():
+    rows = bsm.initial_placement_rows("Unit A", 2, "Unit B", 1)
+
+    updated = bsm.apply_mouse_placement(
+        rows,
+        1,
+        3.25,
+        7.75,
+        bounds=(0.0, 10.0, 0.0, 10.0),
+    )
+
+    assert updated[1]["X"] == 3.25
+    assert updated[1]["Y"] == 7.75
+    assert rows[1]["X"] == 2.0
+
+
+@pytest.mark.parametrize(
+    ("column", "value"),
+    [("X", np.nan), ("X", -0.1), ("Y", 10.1), ("Y", True)],
+)
+def test_placement_rows_reject_invalid_coordinates(column: str, value: object):
+    rows = bsm.initial_placement_rows("Unit A", 1, "Unit B", 1)
+    rows[0][column] = value
+
+    with pytest.raises(ValueError, match=f"Unit #1 {column}"):
+        bsm.validate_placement_rows(
+            rows,
+            bounds=(0.0, 10.0, 0.0, 10.0),
+        )

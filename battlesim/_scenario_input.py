@@ -64,6 +64,11 @@ class CoverZoneInput(StrictInputModel):
     hit_multiplier: Probability = 0.6
 
 
+class UnitPositionInput(StrictInputModel):
+    x: FiniteFloat
+    y: FiniteFloat
+
+
 class BattleRulesInput(StrictInputModel):
     version: NonEmptyString = "1.0"
     tick_seconds: PositiveFloat = 1.0
@@ -83,6 +88,7 @@ class ArmySpecInput(StrictInputModel):
     count: PositiveInt
     position_distribution: PositionDistribution = "normal"
     position_parameters: list[FiniteFloat] = Field(default_factory=list)
+    initial_positions: list[UnitPositionInput] | None = None
     init_ai: TargetAI = "nearest"
     rolling_ai: TargetAI = "nearest"
     decision_ai: DecisionAI = "aggressive"
@@ -98,6 +104,11 @@ class ArmySpecInput(StrictInputModel):
             raise ValueError("doctrine_weights must be non-negative")
         if sum(self.doctrine_weights) <= 0:
             raise ValueError("doctrine_weights must contain a positive value")
+        if (
+            self.initial_positions is not None
+            and len(self.initial_positions) != self.count
+        ):
+            raise ValueError("initial_positions must contain exactly count positions")
         return self
 
 
@@ -124,4 +135,20 @@ class BattleScenarioInput(StrictInputModel):
             raise ValueError("scenario xmin must be less than xmax")
         if ymin >= ymax:
             raise ValueError("scenario ymin must be less than ymax")
+        for army_index, army in enumerate(self.armies):
+            if army.initial_positions is None:
+                continue
+            for unit_index, position in enumerate(army.initial_positions):
+                if not xmin <= position.x <= xmax:
+                    raise ValueError(
+                        "armies."
+                        f"{army_index}.initial_positions.{unit_index}.x "
+                        "must be inside scenario bounds"
+                    )
+                if not ymin <= position.y <= ymax:
+                    raise ValueError(
+                        "armies."
+                        f"{army_index}.initial_positions.{unit_index}.y "
+                        "must be inside scenario bounds"
+                    )
         return self

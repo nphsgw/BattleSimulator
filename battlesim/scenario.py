@@ -45,6 +45,7 @@ class ArmySpec:
     rolling_ai: str = "nearest"
     decision_ai: str = "aggressive"
     doctrine_weights: tuple[float, float, float, float] = (0.25, 0.15, 0.5, 0.1)
+    initial_positions: tuple[tuple[float, float], ...] | None = None
 
     def __post_init__(self) -> None:
         if not self.name:
@@ -57,9 +58,23 @@ class ArmySpec:
             raise ValueError("unsupported targeting AI")
         if self.decision_ai not in _DECISION_AIS:
             raise ValueError("unsupported decision AI")
-        numeric = (*self.position_parameters, *self.doctrine_weights)
+        position_values = (
+            ()
+            if self.initial_positions is None
+            else tuple(
+                value for position in self.initial_positions for value in position
+            )
+        )
+        numeric = (*self.position_parameters, *position_values, *self.doctrine_weights)
         if not all(math.isfinite(value) for value in numeric):
             raise ValueError("army numeric parameters must be finite")
+        if self.initial_positions is not None:
+            if len(self.initial_positions) != self.count:
+                raise ValueError(
+                    "initial_positions must contain exactly count positions"
+                )
+            if any(len(position) != 2 for position in self.initial_positions):
+                raise ValueError("each initial position must contain x and y")
         if any(weight < 0 for weight in self.doctrine_weights):
             raise ValueError("doctrine_weights must be non-negative")
         if sum(self.doctrine_weights) <= 0:
@@ -74,6 +89,13 @@ class ArmySpec:
             count=validated.count,
             position_distribution=validated.position_distribution,
             position_parameters=tuple(validated.position_parameters),
+            initial_positions=(
+                None
+                if validated.initial_positions is None
+                else tuple(
+                    (position.x, position.y) for position in validated.initial_positions
+                )
+            ),
             init_ai=validated.init_ai,
             rolling_ai=validated.rolling_ai,
             decision_ai=validated.decision_ai,
@@ -97,6 +119,7 @@ class ArmySpec:
             rolling_ai=self.rolling_ai,
             decision_ai=self.decision_ai,
             doctrine_weights=self.doctrine_weights,
+            initial_positions=self.initial_positions,
         )
 
 
@@ -133,6 +156,20 @@ class BattleScenario:
             raise ValueError("scenario family must not be empty")
         if self.terrain not in (None, "grid", "contour"):
             raise ValueError("scenario terrain must be grid, contour, or omitted")
+        for army_index, army in enumerate(self.armies):
+            if army.initial_positions is None:
+                continue
+            for unit_index, (x, y) in enumerate(army.initial_positions):
+                if not xmin <= x <= xmax:
+                    raise ValueError(
+                        f"armies[{army_index}].initial_positions[{unit_index}].x "
+                        "must be inside scenario bounds"
+                    )
+                if not ymin <= y <= ymax:
+                    raise ValueError(
+                        f"armies[{army_index}].initial_positions[{unit_index}].y "
+                        "must be inside scenario bounds"
+                    )
 
     @classmethod
     def from_mapping(
@@ -187,6 +224,14 @@ class BattleScenario:
                     count=army.count,
                     position_distribution=army.position_distribution,
                     position_parameters=tuple(army.position_parameters),
+                    initial_positions=(
+                        None
+                        if army.initial_positions is None
+                        else tuple(
+                            (position.x, position.y)
+                            for position in army.initial_positions
+                        )
+                    ),
                     init_ai=army.init_ai,
                     rolling_ai=army.rolling_ai,
                     decision_ai=army.decision_ai,

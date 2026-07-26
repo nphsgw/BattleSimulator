@@ -41,6 +41,9 @@ from .dataset import (  # noqa: F401
 )
 from .distrib import Composite as Composite
 from .distrib import Sampling as Sampling
+from .placement import apply_mouse_placement as apply_mouse_placement
+from .placement import initial_placement_rows as initial_placement_rows
+from .placement import validate_placement_rows as validate_placement_rows
 from .plot import (  # noqa: F401
     FrameView,
     UnitParameterView,

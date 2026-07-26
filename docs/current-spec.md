@@ -113,10 +113,14 @@
   `random`, `nearest`, `close_weak` に対応する
 - `decision_ai`
   戦闘行動方針
+- `initial_positions`
+  unitごとの明示的な `(x, y)` 座標。指定時は `n` 個ちょうど必要で、
+  `pos` による乱数配置より優先される
 
 注意:
 - `init_ai`, `rolling_ai`, `decision_ai`, `pos` はすべて戦闘処理へ使用される
 - TOML scenario経由では、未対応のAI名と分布名はシミュレーション開始前に拒否される
+- scenarioの明示配置は有限値かつbounds内でなければならず、scenario IDへ含まれる
 
 ### `Sampling`
 NumPy の乱数分布をラップするクラス。
