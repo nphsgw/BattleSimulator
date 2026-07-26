@@ -11,6 +11,19 @@
 - 描画機能は `battlesim/plot/` 配下にある
 - 地形生成は `battlesim/terra/` 配下にある
 
+## Validation And Type-Safety Boundary
+- TOML scenarioはPydantic v2のstrict modelで全体を検証してから
+  `ArmySpec`, `BattleScenario`, `BattleRules` のfrozen dataclassへ変換する
+- 文字列から数値、浮動小数点から整数、boolから整数への暗黙変換は行わない
+- 未知の設定キー、NaN、無限大、逆転または退化したboundsを拒否する
+- count、tick数、半径、terrain resolutionは正値でなければならない
+- doctrine weightsは有限な非負値4個で、合計が正でなければならない
+- `terrain`, position distribution、各AI名はサポート済みの値だけを受理する
+- 検証成功後のシミュレーション内部は従来どおりdataclassとNumPy配列を使用する
+- 全ファイルを`ty`で検査し、安全性中核はさらに`mypy --strict`で検査する。
+  strict対象は`pyproject.toml`で管理し、既存moduleを修正した単位で追加する
+- lint・両方の型検査・全テストをCIで必須とする
+
 ## Public API
 
 ### `Battle`
@@ -103,6 +116,7 @@
 
 注意:
 - `init_ai`, `rolling_ai`, `decision_ai`, `pos` はすべて戦闘処理へ使用される
+- TOML scenario経由では、未対応のAI名と分布名はシミュレーション開始前に拒否される
 
 ### `Sampling`
 NumPy の乱数分布をラップするクラス。

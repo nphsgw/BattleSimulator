@@ -9,6 +9,7 @@ import json
 import warnings
 from collections.abc import Callable
 from numbers import Integral
+from typing import Any, cast
 
 import numpy as np
 import pandas as pd
@@ -389,7 +390,7 @@ class Battle:
                     column: (
                         str(self.db_.loc[unit_name, column])
                         if column == "Allegiance"
-                        else float(self.db_.loc[unit_name, column])
+                        else float(cast(Any, self.db_.loc[unit_name, column]))
                     )
                     for column in stat_columns
                 }

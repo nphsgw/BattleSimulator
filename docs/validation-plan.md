@@ -3,6 +3,9 @@
 Rules version 1 is accepted only when deterministic, metamorphic, statistical, and
 performance checks all pass.
 
+- Input checks: strict scalar types, required and unknown fields, finite floats,
+  positive counts/resolutions/radii, ordered bounds, closed enum values, and
+  cross-field invariants.
 - Exact checks: same input/seed/version, state bounds, termination labels, result and
   event schemas.
 - Metamorphic checks: Composite order, team-label exchange, whole-world translation,
@@ -25,3 +28,7 @@ predictions as real-world estimates, add an explicit calibration dataset, proven
 measurement error, accepted parameter ranges, and holdout criteria. Until then, the
 surrogate is documented as an emulator of rules version 1, not a validated model of
 real combat.
+
+Static typing and input validation are defect detectors, not evidence of model
+validity. They do not replace the deterministic, metamorphic, statistical, baseline,
+or external-calibration checks above.

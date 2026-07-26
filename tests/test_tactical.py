@@ -180,6 +180,7 @@ def test_collision_prevents_high_speed_enemy_pass_through():
 
     assert run.final_state["x"][0] < run.final_state["x"][1]
     assert run.final_state["x"][1] - run.final_state["x"][0] >= 0.99
+    assert run.frames.dtype.names is not None
     assert "density" in run.frames.dtype.names
 
 
@@ -296,6 +297,7 @@ def test_cover_reduces_recorded_hit_probability():
         for event in run.result.events
         if event.kind == "shot" and event.actor_id == 10
     )
+    assert shot.value is not None
     assert np.isclose(shot.value, 0.4)
 
 

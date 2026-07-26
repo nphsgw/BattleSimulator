@@ -1,5 +1,7 @@
 """Dataset, batch-resume, uncertainty, and validation tests."""
 
+from typing import Any, cast
+
 import battlesim as bsm
 
 
@@ -43,7 +45,7 @@ def test_surrogate_frame_has_fixed_aggregate_features():
 
     assert frame.loc[0, "scenario_family"] == "small-duel"
     assert frame.loc[0, "partition"] in {"train", "validation", "test", "ood"}
-    assert 0 <= frame.loc[0, "hit_rate"] <= 1
+    assert 0 <= float(cast(Any, frame.loc[0, "hit_rate"])) <= 1
     assert "input_mean_threat_damage_weight" in frame
     assert not bsm.validate_results([battle.result_])
 

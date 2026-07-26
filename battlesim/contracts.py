@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import asdict, dataclass, field
 from enum import StrEnum
 from typing import Any
@@ -31,10 +32,12 @@ class ObjectiveZone:
     capture_ticks: int
 
     def __post_init__(self) -> None:
+        if not all(math.isfinite(value) for value in (self.x, self.y, self.radius)):
+            raise ValueError("objective coordinates and radius must be finite")
         if self.radius <= 0:
             raise ValueError("objective radius must be positive")
-        if self.capture_ticks < 1:
-            raise ValueError("objective capture_ticks must be at least 1")
+        if type(self.capture_ticks) is not int or self.capture_ticks < 1:
+            raise ValueError("objective capture_ticks must be a positive integer")
 
 
 @dataclass(frozen=True)
@@ -47,6 +50,11 @@ class CoverZone:
     hit_multiplier: float = 0.6
 
     def __post_init__(self) -> None:
+        if not all(
+            math.isfinite(value)
+            for value in (self.x, self.y, self.radius, self.hit_multiplier)
+        ):
+            raise ValueError("cover values must be finite")
         if self.radius <= 0:
             raise ValueError("cover radius must be positive")
         if not 0 <= self.hit_multiplier <= 1:
@@ -70,12 +78,15 @@ class BattleRules:
     objectives: tuple[ObjectiveZone, ...] = ()
 
     def __post_init__(self) -> None:
+        numeric = (self.tick_seconds, self.cover_hit_multiplier)
+        if not all(math.isfinite(value) for value in numeric):
+            raise ValueError("battle rule numeric values must be finite")
         if self.tick_seconds <= 0:
             raise ValueError("tick_seconds must be positive")
-        if self.max_ticks < 1:
-            raise ValueError("max_ticks must be at least 1")
-        if self.stalemate_ticks < 1:
-            raise ValueError("stalemate_ticks must be at least 1")
+        if type(self.max_ticks) is not int or self.max_ticks < 1:
+            raise ValueError("max_ticks must be a positive integer")
+        if type(self.stalemate_ticks) is not int or self.stalemate_ticks < 1:
+            raise ValueError("stalemate_ticks must be a positive integer")
         if not 0 <= self.cover_hit_multiplier <= 1:
             raise ValueError("cover_hit_multiplier must be in [0, 1]")
 

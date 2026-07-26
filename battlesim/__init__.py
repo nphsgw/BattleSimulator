@@ -10,14 +10,26 @@ from . import (  # noqa: F401
 )
 from ._battle import Battle  # noqa: F401
 from ._version import __version__  # noqa: F401
-from .contracts import (  # noqa: F401
-    BattleEvent,
-    BattleResult,
-    BattleRules,
-    CoverZone,
-    ObjectiveZone,
-    TeamResult,
-    TerminationReason,
+from .contracts import (
+    BattleEvent as BattleEvent,
+)
+from .contracts import (
+    BattleResult as BattleResult,
+)
+from .contracts import (
+    BattleRules as BattleRules,
+)
+from .contracts import (
+    CoverZone as CoverZone,
+)
+from .contracts import (
+    ObjectiveZone as ObjectiveZone,
+)
+from .contracts import (
+    TeamResult as TeamResult,
+)
+from .contracts import (
+    TerminationReason as TerminationReason,
 )
 from .dataset import (  # noqa: F401
     expand_parameter_sweep,
@@ -39,7 +51,8 @@ from .plot import (  # noqa: F401
     quiver_fight_debug,
     quiver_frame_debug,
 )
-from .scenario import ArmySpec, BattleScenario  # noqa: F401
+from .scenario import ArmySpec as ArmySpec
+from .scenario import BattleScenario as BattleScenario
 from .terra import Terrain  # noqa: F401
 from .validation import (  # noqa: F401
     ValidationIssue,

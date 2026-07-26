@@ -80,10 +80,8 @@ def test_scenario_requires_two_armies():
 
 
 def test_army_count_must_be_positive():
-    army = bsm.ArmySpec("Clone Trooper", 0)
-
-    with pytest.raises(ValueError, match="at least 1"):
-        army.to_composite()
+    with pytest.raises(ValueError, match="positive integer"):
+        bsm.ArmySpec("Clone Trooper", 0)
 
 
 def test_army_spec_preserves_surrogate_doctrine_weights():
