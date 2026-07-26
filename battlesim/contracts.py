@@ -78,6 +78,14 @@ class BattleRules:
     objectives: tuple[ObjectiveZone, ...] = ()
 
     def __post_init__(self) -> None:
+        boolean_fields = (
+            self.simultaneous,
+            self.line_of_sight,
+            self.collision,
+            self.slope_movement,
+        )
+        if not all(type(value) is bool for value in boolean_fields):
+            raise TypeError("battle rule flags must be booleans")
         numeric = (self.tick_seconds, self.cover_hit_multiplier)
         if not all(math.isfinite(value) for value in numeric):
             raise ValueError("battle rule numeric values must be finite")

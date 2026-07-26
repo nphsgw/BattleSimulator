@@ -114,7 +114,9 @@ class BattleScenario:
     rules: BattleRules = field(default_factory=BattleRules)
 
     def __post_init__(self) -> None:
-        if len(self.armies) < 2:
+        if len(self.armies) < 2 or not all(
+            isinstance(army, ArmySpec) for army in self.armies
+        ):
             raise ValueError("scenario must contain at least two armies")
         if len(self.bounds) != 4 or not all(
             math.isfinite(value) for value in self.bounds

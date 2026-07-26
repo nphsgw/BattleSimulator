@@ -9,6 +9,7 @@ This file determines different background 'terrains' to have for any given map.
 This can be fixed size or infinite if it follows some mathematical function.
 """
 
+import math
 from collections.abc import Callable
 
 import matplotlib.pyplot as plt
@@ -98,11 +99,15 @@ class Terrain:
             raise TypeError("'dim' must be of type [list, tuple]")
         if len(dim) != 4:
             raise AttributeError("'dim' must contain 4 elements")
+        _utils.is_ntuple(dim, *([(int, float, np.float32, np.int32)] * 4))
+        if any(isinstance(value, (bool, np.bool_)) for value in dim):
+            raise TypeError("'dim' values must be numeric, not boolean")
+        if not all(math.isfinite(float(value)) for value in dim):
+            raise ValueError("'dim' values must be finite")
         if dim[1] <= dim[0]:
             raise AttributeError("xmax cannot be <= xmin")
         if dim[3] <= dim[2]:
             raise AttributeError("ymax cannot be <= ymin")
-        _utils.is_ntuple(dim, *([(int, float, np.float32, np.int32)] * 4))
         self._bounds = dim
 
     @property
@@ -114,6 +119,8 @@ class Terrain:
     def res_(self, r: float):
         if not isinstance(r, float):
             raise TypeError("'res' must be of type [float]")
+        if not math.isfinite(r):
+            raise ValueError("'res' must be finite")
         if r < 1e-8:
             raise ValueError("'res' cannot be less than 0")
         self._res = r

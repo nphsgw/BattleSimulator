@@ -8,7 +8,7 @@ from . import (  # noqa: F401
     simulation,
     terra,
 )
-from ._battle import Battle  # noqa: F401
+from ._battle import Battle as Battle
 from ._version import __version__  # noqa: F401
 from .contracts import (
     BattleEvent as BattleEvent,
@@ -39,7 +39,8 @@ from .dataset import (  # noqa: F401
     scenario_family_partition,
     wilson_interval,
 )
-from .distrib import Composite, Sampling  # noqa: F401
+from .distrib import Composite as Composite
+from .distrib import Sampling as Sampling
 from .plot import (  # noqa: F401
     FrameView,
     UnitParameterView,
@@ -53,7 +54,7 @@ from .plot import (  # noqa: F401
 )
 from .scenario import ArmySpec as ArmySpec
 from .scenario import BattleScenario as BattleScenario
-from .terra import Terrain  # noqa: F401
+from .terra import Terrain as Terrain
 from .validation import (  # noqa: F401
     ValidationIssue,
     monte_carlo_summary,

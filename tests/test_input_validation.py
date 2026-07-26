@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from typing import Any, cast
 
 import pytest
 from hypothesis import given
@@ -83,6 +84,31 @@ def test_closed_configuration_values_are_rejected_early() -> None:
         )
 
 
+def test_nested_rule_flags_do_not_accept_integers() -> None:
+    scenario = valid_scenario()
+    scenario["rules"] = {"line_of_sight": 1}
+
+    with pytest.raises(ValidationError):
+        bsm.BattleScenario.from_mapping(scenario)
+
+
+@pytest.mark.parametrize("seed", [True, 1.9, "1"])
+def test_direct_battle_seed_rejects_implicit_conversion(seed: object) -> None:
+    with pytest.raises(TypeError):
+        bsm.Battle(seed=cast(Any, seed), use_tqdm=False)
+    battle = bsm.Battle(use_tqdm=False)
+    with pytest.raises(TypeError):
+        battle.simulate(seed=cast(Any, seed))
+
+
+@pytest.mark.parametrize("count", [True, 1.9, "1"])
+def test_simulate_k_rejects_non_integer_trial_count(count: object) -> None:
+    battle = bsm.Battle(use_tqdm=False)
+
+    with pytest.raises(TypeError):
+        battle.simulate_k(cast(Any, count))
+
+
 def test_direct_domain_construction_rejects_non_finite_values() -> None:
     with pytest.raises(ValueError, match="finite"):
         bsm.ObjectiveZone(0.0, 0.0, math.nan, 1)
@@ -92,3 +118,16 @@ def test_direct_domain_construction_rejects_non_finite_values() -> None:
             1,
             doctrine_weights=(math.nan, 0.0, 0.0, 0.0),
         )
+    with pytest.raises(ValueError, match="finite"):
+        bsm.Composite(
+            "Clone Trooper",
+            1,
+            doctrine_weights=(math.nan, 0.0, 0.0, 0.0),
+        )
+    with pytest.raises(ValueError, match="finite"):
+        bsm.Terrain(res=math.nan)
+
+
+def test_direct_rule_flags_must_be_booleans() -> None:
+    with pytest.raises(TypeError, match="booleans"):
+        bsm.BattleRules(line_of_sight=cast(Any, 1))

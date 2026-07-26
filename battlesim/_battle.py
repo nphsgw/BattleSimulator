@@ -41,6 +41,17 @@ class Battle:
     flow.
     """
 
+    @staticmethod
+    def _validated_seed(seed: int | None) -> int:
+        if seed is None:
+            return 0
+        if isinstance(seed, bool) or not isinstance(seed, Integral):
+            raise TypeError("seed must be an integer or None")
+        normalized = int(seed)
+        if normalized < 0:
+            raise ValueError("seed must be non-negative")
+        return normalized
+
     def __init__(
         self,
         db: str | dict | pd.DataFrame = default_db(),
@@ -65,10 +76,12 @@ class Battle:
         use_tqdm : bool, default=True
             Draws a progressbar with `simulate_k` if tqdm is installed
         """
+        if type(use_tqdm) is not bool:
+            raise TypeError("use_tqdm must be a boolean")
+        if rules is not None and not isinstance(rules, BattleRules):
+            raise TypeError("rules must be BattleRules or None")
         self.use_tqdm = use_tqdm
-        self.seed = 0 if seed is None else int(seed)
-        if self.seed < 0:
-            raise ValueError("seed must be non-negative")
+        self.seed = self._validated_seed(seed)
         self.rules = BattleRules() if rules is None else rules
         # assign with checks
         self.db_ = db
@@ -704,6 +717,10 @@ class Battle:
 
         Returns np.ndarray of frames.
         """
+        selected_seed = self.seed if seed is None else self._validated_seed(seed)
+        if rules is not None and not isinstance(rules, BattleRules):
+            raise TypeError("rules must be BattleRules or None")
+        selected_rules = self.rules if rules is None else rules
         self._is_instantiated()
         # check for multiple teams
         if np.unique(self._teams).shape[0] <= 1:
@@ -713,8 +730,6 @@ class Battle:
             return self.sim_
 
         # set up M matrix from composition info
-        selected_seed = self.seed if seed is None else int(seed)
-        selected_rules = self.rules if rules is None else rules
         streams = RandomStreams.from_seed(selected_seed)
         self._presim(streams, selected_rules)
         matrix = self.M_
@@ -764,8 +779,15 @@ class Battle:
 
         Returns the victory for each k iteration, for each team.
         """
+        if isinstance(k, bool) or not isinstance(k, Integral):
+            raise TypeError("'k' must be an integer")
+        if seed is not None:
+            self._validated_seed(seed)
+        if not isinstance(randomize, tuple) or not all(
+            isinstance(name, str) for name in randomize
+        ):
+            raise TypeError("randomize must be a tuple of strings")
         self._is_instantiated()
-
         allowed_randomization = {"placement", "terrain", "combat"}
         unknown = set(randomize) - allowed_randomization
         if unknown:
@@ -782,7 +804,7 @@ class Battle:
 
             # now handles J teams (thanks kmcnayr @ https://github.com/gregparkes/BattleSimulator/issues/4)
             runs = np.zeros((k, np.unique(self._teams).shape[0]), dtype=np.int64)
-            root_seed = self.seed if seed is None else int(seed)
+            root_seed = self.seed if seed is None else self._validated_seed(seed)
             fixed_streams = RandomStreams.from_seed(root_seed)
             self._presim(fixed_streams)
             initialized_matrix = self.M_

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import math
+from numbers import Real
 from typing import Any, Protocol
 
 from numpy.typing import NDArray
@@ -43,7 +45,14 @@ class Composite:
         self.decision_ai = decision_ai
         if len(doctrine_weights) != 4:
             raise ValueError("doctrine_weights must contain four values")
+        if any(
+            isinstance(value, bool) or not isinstance(value, Real)
+            for value in doctrine_weights
+        ):
+            raise TypeError("doctrine_weights must contain numbers")
         self.doctrine_weights = tuple(float(value) for value in doctrine_weights)
+        if not all(math.isfinite(value) for value in self.doctrine_weights):
+            raise ValueError("doctrine_weights must be finite")
         if any(value < 0 for value in self.doctrine_weights):
             raise ValueError("doctrine_weights must be non-negative")
         if sum(self.doctrine_weights) <= 0:
