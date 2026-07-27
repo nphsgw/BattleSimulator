@@ -45,49 +45,52 @@ def test_battle_attributes(battle: bsm.Battle):
     assert battle.bounds_ == (-10.0, 10.0, -10.0, 10.0)
 
 
-def test_battle_create_army(battle: bsm.Battle):
-    # battle object requires input file
-    # try normal
+@pytest.mark.parametrize(
+    "composition",
+    [
+        "Hello",
+        pd.DataFrame({"ho": [1, 2], "hi": [2, 3]}),
+        ["Clone"],
+        ["Clone", 2],
+        [("Clone", 2)],
+        [("Clone Trooper", "hello")],
+        [("B1 battledroid", np.inf)],
+    ],
+)
+def test_create_army_rejects_values_outside_composite_contract(
+    battle: bsm.Battle, composition: object
+):
+    """Current-spec requires a list or tuple containing only Composites."""
     with pytest.raises(TypeError):
-        battle.create_army(cast(Any, "Hello"))
-    with pytest.raises(TypeError):
-        battle.create_army(cast(Any, pd.DataFrame({"ho": [1, 2], "hi": [2, 3]})))
-    with pytest.raises(TypeError):
-        battle.create_army(cast(Any, ["Clone"]))
-    with pytest.raises(TypeError):
-        battle.create_army(cast(Any, ["Clone", 2]))
+        battle.create_army(cast(Any, composition))
 
-    with pytest.raises(TypeError):
-        battle.create_army(cast(Any, [("Clone", 2)]))
-        battle.create_army(cast(Any, [("Droid", 10), ("Clone Trooper", 5)]))
 
-    with pytest.raises(TypeError):
-        battle.create_army(cast(Any, [("Clone Trooper", "hello")]))
-        battle.create_army(cast(Any, [("B1 battledroid", np.inf)]))
-
-    # created normally.
+def test_create_army_preserves_valid_composition(battle: bsm.Battle):
     comp = [bsm.Composite("B1 battledroid", 10), bsm.Composite("Clone Trooper", 10)]
     battle.create_army(comp)
 
+    assert battle.composition_ == comp
+    assert battle.army_set_ == (("b1 battledroid", 10), ("clone trooper", 10))
 
-def test_simulate(battle: bsm.Battle):
-    # cannot simulate before creating an army set
+
+def test_simulate_preserves_public_frame_and_result_contract(battle: bsm.Battle):
+    """The change policy preserves frame output and exposes a structured result."""
     with pytest.raises(AttributeError):
         battle.simulate()
 
-    # create a composite
-    comp = [bsm.Composite("B1 battledroid", 100), bsm.Composite("Clone Trooper", 100)]
-    # define army
+    comp = [bsm.Composite("B1 battledroid", 2), bsm.Composite("Clone Trooper", 2)]
     battle.create_army(comp)
 
-    assert battle.sim_ is None, "no simulation object present"
+    frames = battle.simulate()
 
-    # no important parameters apart from those passed to simulate_battle
-    # check return type
-    F = battle.simulate()
-    # check presense of b.sim_
-    assert battle.sim_ is not None, "simulation object should be present and isnt"
-    assert isinstance(F, np.ndarray), "must be of type np.ndarray for F"
+    assert battle.sim_ is frames
+    assert frames.ndim == 2
+    assert frames.shape[1] == 4
+    assert frames.dtype.names is not None
+    assert {"x", "y", "hp", "armor", "team", "target"} <= set(frames.dtype.names)
+    assert battle.result_ is not None
+    assert battle.result_.seed == 0
+    assert battle.result_.simulator_version == bsm.__version__
 
 
 def test_battle_requires_army_before_accessing_composition(battle: bsm.Battle):

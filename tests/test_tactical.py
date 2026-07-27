@@ -6,6 +6,7 @@ from pathlib import Path
 import numpy as np
 
 import battlesim as bsm
+from battlesim.contracts import RESULT_SCHEMA_VERSION, RULES_VERSION
 from battlesim.randomness import RandomStreams
 from battlesim.simulation._tactical import simulate_tactical
 
@@ -57,6 +58,52 @@ def test_same_seed_produces_identical_result_and_frames():
 
     assert np.array_equal(first_frames, second_frames)
     assert first_result == battle.result_
+
+
+def test_named_random_streams_are_isolated_between_subsystems():
+    """Model contract: draws in one named stream must not perturb another."""
+    baseline = RandomStreams.from_seed(123)
+    expected_hit_draws = baseline.generator("hit").random(4)
+
+    perturbed = RandomStreams.from_seed(123)
+    perturbed.generator("placement").random(100)
+    actual_hit_draws = perturbed.generator("hit").random(4)
+
+    assert np.array_equal(actual_hit_draws, expected_hit_draws)
+
+
+def test_result_records_version_seed_and_termination_contract():
+    """Model contract requires traceable versions, seed, IDs, and termination."""
+    rules = bsm.BattleRules(
+        max_ticks=1,
+        stalemate_ticks=2,
+        line_of_sight=False,
+        collision=False,
+    )
+    battle = bsm.Battle(
+        _database(hp=10, damage=0),
+        bounds=(-2.0, 2.0, -2.0, 2.0),
+        use_tqdm=False,
+        seed=41,
+        rules=rules,
+    )
+    battle.create_army(
+        [
+            bsm.Composite("A unit", 1, pos_dist=bsm.Sampling("normal", 0, 0)),
+            bsm.Composite("B unit", 1, pos_dist=bsm.Sampling("normal", 0, 0)),
+        ]
+    )
+
+    battle.simulate()
+
+    assert battle.result_ is not None
+    assert battle.result_.seed == 41
+    assert battle.result_.simulator_version == bsm.__version__
+    assert battle.result_.rules_version == RULES_VERSION
+    assert battle.result_.schema_version == RESULT_SCHEMA_VERSION
+    assert len(battle.result_.scenario_id) == 64
+    assert len(battle.result_.trial_id) == 64
+    assert battle.result_.termination_reason == bsm.TerminationReason.TIMEOUT
 
 
 def test_composite_registration_order_does_not_change_aggregate_result():

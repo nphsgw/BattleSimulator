@@ -1,6 +1,9 @@
 """Dataset, batch-resume, uncertainty, and validation tests."""
 
+from dataclasses import replace
 from typing import Any, cast
+
+import pytest
 
 import battlesim as bsm
 
@@ -50,10 +53,12 @@ def test_surrogate_frame_has_fixed_aggregate_features():
     assert not bsm.validate_results([battle.result_])
 
 
-def test_wilson_interval_contains_observed_rate():
+def test_wilson_interval_matches_hand_calculated_95_percent_bounds():
+    """Dataset contract uses the Wilson score interval, not a generic range."""
     lower, upper = bsm.wilson_interval(7, 10)
 
-    assert lower < 0.7 < upper
+    assert lower == pytest.approx(0.396773, abs=1e-6)
+    assert upper == pytest.approx(0.892211, abs=1e-6)
 
 
 def test_parameter_sweep_expands_rules_fields():
@@ -68,18 +73,32 @@ def test_parameter_sweep_expands_rules_fields():
 
 
 def test_monte_carlo_summary_and_sensitivity_analysis():
-    results = []
-    for seed in range(2):
-        battle = _scenario().run(seed=seed)
-        assert battle.result_ is not None
-        results.append(battle.result_)
+    battle = _scenario().run(seed=0)
+    assert battle.result_ is not None
+    template = battle.result_
+    results = [
+        replace(template, trial_id="win", ticks=2, winner_team_ids=(0,)),
+        replace(template, trial_id="undecided", ticks=4, winner_team_ids=()),
+    ]
 
     summary = bsm.monte_carlo_summary(results, team_id=0)
     sensitivity = bsm.sensitivity_analysis(
         [1.0, 2.0],
-        lambda _value, seed: _scenario().run(seed=seed).result_,
+        lambda value, seed: replace(template, ticks=int(value) + seed),
         replicates=2,
+        seed=10,
     )
 
     assert summary["trials"] == 2
+    assert summary["wins"] == 1
+    assert summary["win_probability"] == 0.5
+    assert summary["mean_ticks"] == 3.0
+    assert summary["undecided_rate"] == 0.5
+    assert summary["win_probability_lower"] < 0.5
+    assert summary["win_probability_upper"] > 0.5
     assert list(sensitivity["parameter_value"]) == [1.0, 2.0]
+    assert list(sensitivity["replicates"]) == [2, 2]
+    assert list(sensitivity["mean"]) == [11.5, 12.5]
+    assert list(sensitivity["std"]) == [0.5, 0.5]
+    assert list(sensitivity["minimum"]) == [11.0, 12.0]
+    assert list(sensitivity["maximum"]) == [12.0, 13.0]

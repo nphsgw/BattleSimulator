@@ -31,6 +31,12 @@ BattleSimulator を、明示的な戦術入力から再現可能な結果分布�
 - 戦闘ロジックと可視化の変更は分離する
 - 既存の公開 API は、明示的な方針がない限り維持する
 - 挙動変更には対応テスト、バグ修正には再発防止テストを追加する
+- テスト実装前に、検証する主張、仕様または再現ケース、検出すべき代表的な
+  誤実装、非対象を明示する
+- 期待値は手計算可能なmicro scenario、契約例、独立したreferenceから導出し、
+  検査対象と同じproduction helperで生成しない
+- バグ修正では修正前の失敗を確認する。重要な挙動変更では可能な範囲で一時的な
+  fault injectionまたはmutationにより、新規テストが誤実装を検出することを確認する
 - 開発環境は `uv` と Python 3.12 以上を前提にする
 
 ## Type Safety And Input Boundaries
@@ -69,6 +75,9 @@ BattleSimulator を、明示的な戦術入力から再現可能な結果分布�
   未知キー、cross-field制約を検査する
 - 広い入力空間にはHypothesisを使う
 - 統計テストは固定seed集合、許容差、sample数をテスト名またはdocsへ記録する
+- coverage率とmutation scoreだけを仕様適合性やモデル妥当性の証拠にしない
+- 重要なテスト変更では、主張と根拠、期待値の導出、境界・不変条件、
+  検出確認した誤実装、非対象をレビュー可能に記録する
 - 静的型検査と入力検証をモデル妥当性の証拠として扱わず、
   deterministic、metamorphic、statistical checksを維持する
 - 完全なテストスイートは200-unit battleを含め30秒以内を初期予算とする
