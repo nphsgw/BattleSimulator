@@ -34,6 +34,9 @@ tags
 .idea
 .vscode
 
+.claude/settings.local.json
+CLAUDE.local.md
+
 .coverage
 .ipynb_checkpoints/
 .pytest_cache/
