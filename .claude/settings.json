@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:docs.claude.com)",
+      "Bash(make check)",
+      "Bash(make lint)",
+      "Bash(make typecheck)",
+      "Bash(make format)",
+      "Bash(make format-check)",
+      "Bash(make install-hooks)",
+      "Bash(make clean)"
+    ]
+  }
+}
