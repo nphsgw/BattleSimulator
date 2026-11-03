@@ -81,3 +81,11 @@ BattleSimulator を、明示的な戦術入力から再現可能な結果分布�
 - 静的型検査と入力検証をモデル妥当性の証拠として扱わず、
   deterministic、metamorphic、statistical checksを維持する
 - 完全なテストスイートは200-unit battleを含め30秒以内を初期予算とする
+
+## Working Agreements
+- 頼まれた範囲だけを変更する。気づいた別の問題は手を付けず報告に挙げる
+- 実行していない検証を通過扱いにしない。報告には変更内容、実行した検証と結果、未検証の範囲を含める
+- 検証は `make` 経由で行い、`ruff` / `mypy` / `pytest` を個別の設定で直接実行して代替しない
+  （対象と設定が `make check` とずれるため。部分確認は `make lint` / `typecheck` / `format-check`）
+- `skip` / `xfail` / `importorskip` を追加する場合は理由を書く。失敗を消すために追加しない
+- 変更後、実装とは別セッションで `/review`（`.claude/skills/review/SKILL.md`）を実行する

@@ -9,6 +9,12 @@
       "Bash(make format-check)",
       "Bash(make install-hooks)",
       "Bash(make clean)"
+    ],
+    "deny": [
+      "Bash(rm -rf *)",
+      "Bash(git push --force*)",
+      "Bash(git commit*--no-verify*)",
+      "Bash(git reset --hard*)"
     ]
   }
 }
