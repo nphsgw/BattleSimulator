@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import platform
 from dataclasses import asdict, replace
 from itertools import product
 from pathlib import Path
@@ -12,13 +13,25 @@ from typing import Any, Iterable, Mapping, Sequence
 import numpy as np
 import pandas as pd
 
+from battlesim._version import __version__
 from battlesim.contracts import (
     DATASET_SCHEMA_VERSION,
+    RESULT_SCHEMA_VERSION,
+    RULES_VERSION,
     BattleResult,
     BattleRules,
 )
 from battlesim.randomness import derive_trial_seed
 from battlesim.scenario import BattleScenario
+
+
+def _package_environment() -> dict[str, str]:
+    """Versions recorded in the manifest only, never in dataset rows."""
+    return {
+        "python": platform.python_version(),
+        "numpy": np.__version__,
+        "pandas": pd.__version__,
+    }
 
 
 def wilson_interval(
@@ -212,9 +225,17 @@ def run_batch(
             combined.to_parquet(path, index=False)
         else:
             raise ValueError("dataset filename must end in .csv, .jsonl, or .parquet")
+        # Mixing versions is refused above, so at most one rules version exists.
+        rules_version = next(
+            iter({rules for rules, _ in existing_versions}), RULES_VERSION
+        )
         manifest_path = path.with_suffix(path.suffix + ".manifest.json")
         manifest_record = {
             "schema_version": DATASET_SCHEMA_VERSION,
+            "result_schema_version": RESULT_SCHEMA_VERSION,
+            "rules_version": rules_version,
+            "simulator_version": __version__,
+            "package_environment": _package_environment(),
             "root_seed": seed,
             "replicates_per_scenario": trials,
             "scenario_families": sorted(

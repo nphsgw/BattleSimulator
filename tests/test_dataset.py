@@ -1,5 +1,6 @@
 """Dataset, batch-resume, uncertainty, and validation tests."""
 
+import json
 from dataclasses import replace
 from typing import Any, cast
 
@@ -38,6 +39,41 @@ def test_batch_resume_deduplicates_trial_ids(tmp_path):
     assert len(resumed) == 2
     assert resumed["trial_id"].is_unique
     assert output.with_suffix(".csv.manifest.json").exists()
+
+
+def test_manifest_records_versions_and_environment_and_caller_domains(tmp_path):
+    """Contract: manifest names rules/schema/simulator versions and environment.
+
+    Claim: docs/dataset-contract.md manifest fields are written by run_batch.
+    Expected values are literals from the contract ("1.0" versions, root seed 4,
+    2 replicates), not read from production constants. Caller keys merge last.
+    Detects: manifest omitting versions or environment; caller domains dropped.
+    Non-goal: concrete environment version strings (machine dependent).
+    """
+    output = tmp_path / "trials.csv"
+
+    bsm.run_batch(
+        [_scenario()],
+        trials=2,
+        seed=4,
+        output=output,
+        manifest={"parameter_domains": {"count": [1, 2]}},
+    )
+    manifest = json.loads(
+        output.with_suffix(".csv.manifest.json").read_text(encoding="utf-8")
+    )
+
+    assert manifest["schema_version"] == "1.0"
+    assert manifest["result_schema_version"] == "1.0"
+    assert manifest["rules_version"] == "1.0"
+    assert manifest["simulator_version"] == bsm.__version__
+    assert manifest["root_seed"] == 4
+    assert manifest["replicates_per_scenario"] == 2
+    assert manifest["rows"] == 2
+    assert manifest["parameter_domains"] == {"count": [1, 2]}
+    environment = manifest["package_environment"]
+    assert set(environment) == {"python", "numpy", "pandas"}
+    assert all(isinstance(value, str) and value for value in environment.values())
 
 
 def test_surrogate_frame_has_fixed_aggregate_features():
