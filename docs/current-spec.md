@@ -656,4 +656,4 @@ UI は戦闘ロジックや描画ロジックを実装せず、`BattleScenario` 
 - この文書
 - `docs/simulation-rules.md`
 - 関連テスト
-- 必要なら `README.rst`
+- 必要なら `README.md`
