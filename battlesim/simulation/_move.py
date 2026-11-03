@@ -11,7 +11,7 @@ There is the default 'move' and fancier options such as A*.
 """
 
 import numpy as np
-from numba import njit
+from numba import njit  # type: ignore[attr-defined]  # numba: 型情報なし
 from numpy.typing import NDArray
 
 __all__ = ["to_enemy"]

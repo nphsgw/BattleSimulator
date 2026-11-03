@@ -11,14 +11,12 @@ format-check:
 	uv run --extra all ruff format --check apps battlesim tests
 
 typecheck:
-	uv run --extra all ty check apps battlesim tests
 	uv run --extra all mypy
 
 check:
 	uv run --extra all pre-commit validate-config .pre-commit-config.yaml
 	uv run --extra all ruff check apps battlesim tests
 	uv run --extra all ruff format --check apps battlesim tests
-	uv run --extra all ty check apps battlesim tests
 	uv run --extra all mypy
 	uv run --extra all pytest -v
 

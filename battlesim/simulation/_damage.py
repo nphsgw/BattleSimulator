@@ -6,7 +6,7 @@ Created on Tue Oct  8 11:12:15 2019
 @author: gparkes
 """
 
-from numba import njit
+from numba import njit  # type: ignore[attr-defined]  # numba: 型情報なし
 
 """
 Includes a bonus damage when attacking downhill.

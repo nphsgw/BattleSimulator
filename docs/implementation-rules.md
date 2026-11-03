@@ -6,12 +6,13 @@
 - 開発環境は `uv` と Python 3.12 以上を基準にする
 
 ## Type Safety And Input Boundaries
-- `ty` で `battlesim/`, `apps/`, `tests/` の全体を常時検査する
-- `mypy --strict` を安全性中核の静的型検査の正とする。対象一覧は
-  `pyproject.toml` の `tool.mypy.files` に明記し、入力境界、契約、乱数、
-  dataset、validation、および修正したmoduleの対応テストを含める
-- 既存のNumba/legacy領域は修正したmodule単位で `tool.mypy.files` へ追加し、
-  strict対象を縮小しない。この段階的拡大をtype-safety ratchetとする
+- 静的型検査は `mypy` に一本化し、`battlesim/`, `apps/`, `tests/` の全体を常時検査する
+- 安全性中核には `mypy --strict` 相当のフラグを適用する。`strict` はmodule単位で
+  指定できないため、対象一覧は `pyproject.toml` の `tool.mypy.overrides` に
+  フラグ付きで明記し、入力境界、契約、乱数、dataset、validation、および
+  修正したmoduleの対応テストを含める
+- 既存のNumba/legacy領域は修正したmodule単位で `tool.mypy.overrides` の
+  厳格対象へ追加し、対象を縮小しない。この段階的拡大をtype-safety ratchetとする
 - `Any` は未検証の外部入力や型情報を提供しない依存ライブラリとの局所的な境界に
   限定し、ドメイン層へ伝播させない
 - `type: ignore` は対象エラーコードと理由を付け、未使用の抑制をエラーにする
@@ -82,8 +83,8 @@ snapshot化するテスト、test orderやglobal random stateへ依存するテ�
 - 実装前提や制約はコード中ではなく docs に残す
 
 ## Enforcement
-- `make check` は pre-commit 設定の検証、Ruff lint、format check、全体ty、
-  mypy strict、pytestの全てを実行する
+- `make check` は pre-commit 設定の検証、Ruff lint、format check、全体mypy
+  (厳格対象はstrict相当)、pytestの全てを実行する
 - CIも `make check` と同じ対象を検査し、一部ファイルだけを対象にして成功扱いしない
 - `pre-commit` stageでは変更ファイルの種類にかかわらず `make check` を毎回実行する
 - cloneまたはdependency sync後は `make install-hooks` でGit hookを導入する

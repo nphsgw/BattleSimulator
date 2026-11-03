@@ -33,7 +33,7 @@ passed to the functions.
 """
 
 import numpy as np
-from numba import njit
+from numba import njit  # type: ignore[attr-defined]  # numba: 型情報なし
 from numpy.typing import NDArray
 
 from battlesim import _mathutils

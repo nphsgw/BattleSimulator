@@ -9,7 +9,7 @@ Created on Tue Oct  8 11:07:18 2019
 import math
 
 import numpy as np
-from numba import njit
+from numba import njit  # type: ignore[attr-defined]  # numba: 型情報なし
 from numpy.typing import NDArray
 
 from . import _damage, _hit, _move

@@ -14,6 +14,7 @@ from typing import Any, cast
 import numpy as np
 import pandas as pd
 from matplotlib import colors
+from numpy.typing import NDArray
 
 from battlesim.contracts import BattleResult, BattleRules
 from battlesim.plot._simplot import quiver_fight
@@ -87,7 +88,7 @@ class Battle:
         self.db_ = db
         self._M = None
         self._S = None
-        self._sim = None
+        self._sim: NDArray[Any] | None = None
         self._result: BattleResult | None = None
         self._results: tuple[BattleResult, ...] = ()
         self.db_.index = self.db_.index.str.lower()

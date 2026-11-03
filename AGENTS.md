@@ -40,9 +40,9 @@ BattleSimulator を、明示的な戦術入力から再現可能な結果分布�
 - 開発環境は `uv` と Python 3.12 以上を前提にする
 
 ## Type Safety And Input Boundaries
-- `ty` は `apps/`, `battlesim/`, `tests/` 全体へ適用する
-- `mypy --strict` の対象は `pyproject.toml` の `tool.mypy.files` で管理する
-- 修正したNumba/legacy moduleは可能な限りmypy strict対象へ追加し、既存対象を縮小しない
+- `mypy` は `apps/`, `battlesim/`, `tests/` 全体へ適用する
+- `mypy --strict` 相当の厳格設定の対象は `pyproject.toml` の `tool.mypy.overrides` で管理する
+- 修正したNumba/legacy moduleは可能な限り厳格対象へ追加し、既存対象を縮小しない
 - `Any` は未検証入力または型情報のない依存との局所的境界に限定し、伝播させない
 - `type: ignore` には対象エラーコードと理由を付ける
 - TOML、CLI、CSV、外部から復元したデータはPydantic v2のstrict modelで検証する
@@ -68,7 +68,7 @@ BattleSimulator を、明示的な戦術入力から再現可能な結果分布�
 
 ## Validation Gates
 - Python変更後は原則 `make check` を実行する
-- `make check` はpre-commit設定検証、Ruff lint、format check、全体ty、mypy strict、pytestを含む
+- `make check` はpre-commit設定検証、Ruff lint、format check、全体mypy、厳格対象のstrict設定、pytestを含む
 - 通常の `git commit` でもpre-commit hookから `make check` を毎回実行する
 - dependency sync後にhookが未導入なら `make install-hooks` を実行する
 - 入力変更では正常系に加え、境界値、NaN/無限大、boolと数値の混同、

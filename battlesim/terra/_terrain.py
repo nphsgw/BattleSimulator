@@ -72,7 +72,7 @@ class Terrain:
         self.bounds_ = dim
         self.res_ = res
         self.form_ = form
-        self._Z = None
+        self._Z: NDArray[np.float64] | None = None
         if dtype != "perlin":
             raise ValueError("'dtype' must be 'perlin'")
         self.dtype = dtype
@@ -139,7 +139,7 @@ class Terrain:
             self.Z_ is not None, self.dtype, self.bounds_, self.res_
         )
 
-    def get_grid(self) -> NDArray[np.float64]:
+    def get_grid(self) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
         """Returns the grid as an mgrid.
 
         Returns

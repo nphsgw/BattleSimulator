@@ -390,11 +390,11 @@ def main() -> None:
                 placement_rows,
             )
         try:
-            battle = scenario.run()
+            new_battle = scenario.run()
         except Exception as error:
             st.exception(error)
         else:
-            st.session_state["battle"] = battle
+            st.session_state["battle"] = new_battle
             st.session_state["playback_frame"] = 0
             st.session_state["playback_playing"] = True
             st.session_state["playback_skip_advance"] = True

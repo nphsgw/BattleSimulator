@@ -9,7 +9,7 @@ Performs calculations on the 'hit chance' of various attacks.
 """
 
 import numpy as np
-from numba import njit
+from numba import njit  # type: ignore[attr-defined]  # numba: 型情報なし
 from numpy.typing import NDArray
 
 

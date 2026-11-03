@@ -20,8 +20,8 @@
 - doctrine weightsは有限な非負値4個で、合計が正でなければならない
 - `terrain`, position distribution、各AI名はサポート済みの値だけを受理する
 - 検証成功後のシミュレーション内部は従来どおりdataclassとNumPy配列を使用する
-- 全ファイルを`ty`で検査し、安全性中核はさらに`mypy --strict`で検査する。
-  strict対象は`pyproject.toml`で管理し、既存moduleを修正した単位で追加する
+- 全ファイルを`mypy`で検査し、安全性中核にはさらにstrict相当のフラグを適用する。
+  厳格対象は`pyproject.toml`の`tool.mypy.overrides`で管理し、既存moduleを修正した単位で追加する
 - lint・両方の型検査・全テストをCIで必須とする
 
 ## Public API
