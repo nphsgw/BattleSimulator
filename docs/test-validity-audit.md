@@ -10,7 +10,8 @@
 - mockやsnapshotが検査対象そのものを正解としていないか
 - 代表的な誤実装を失敗として検出できるか
 
-棚卸し前の全体テストは124件が成功し、実測24.82秒だった。起動等を含む
+棚卸し時点(2026-07-27)の全体テストは124件が成功し、実測24.82秒だった。件数と時間は
+その時点の値で、現在の予算は `docs/validation-plan.md` を正とする。起動等を含む
 コマンド全体は28.43秒で、200-unit battleを含む30秒の初期予算内だった。
 
 ## File Audit
@@ -70,7 +71,7 @@
   ごとに独立したsource copyも必要となる。
 
 このため現時点ではmutation dependency、`make` target、scheduled CIを追加しない。
-重要変更では上表と同じ局所的な手動fault injectionを行い、変更説明へ結果を残す。
+重要変更での手動fault injectionの手順は `docs/validation-plan.md` に従う。
 自動化を再評価する条件は次とする。
 
 - NumPyを利用するpytest suiteを安定して分離実行できる

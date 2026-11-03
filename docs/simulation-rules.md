@@ -8,6 +8,8 @@
 - rules version `1.0` は、2 次元、離散時間、unit 単位の agent-based model とする
 - 1 tick は 1 秒、距離は任意の一貫した距離単位、速度は距離/tick とする
 - 攻撃は hitscan とし、弾丸の飛翔時間と弾薬は扱わない
+- 本書の「legacy」は、`Battle` が使わない低レベル API
+  `simulation.simulate_battle` の旧挙動を指す。rules version の識別子ではない
 - 独自仕様を追加したら、このファイルに明記する
 
 ## Current Explicit Rules
@@ -22,7 +24,7 @@
 - legacy `aggressive` の5%前進判定と命中判定には独立乱数を使う。
   rules version `1.0` に5%強制前進はない
 - データベース列 `Miss` は後方互換のため名前を維持するが、意味はそのユニット自身のミス率ではなく、攻撃対象になったときの回避率 `dodge` とする
-- rules version `legacy-0.3` の各 tick は unit index 昇順の逐次解決とする
+- legacy の各 tick は unit index 昇順の逐次解決とする
 - rules version `1.0` の各 tick は開始時 snapshot から判断し、移動後に攻撃を
   予約して tick 終了時に一括反映する。相打ちは有効とする
 - 同距離時の target tie-break に配列 index を使用せず、stable unit IDを使う。
@@ -30,6 +32,9 @@
 - 敵へ接近するときは射程境界を移動上限とし、移動線分の交差判定で
   高速unit同士の通り抜けも防ぐ
 - 返却フレームは初期状態を frame 0 とし、各 tick の解決後の状態を追加する。最大 tick 到達時も最後の更新結果を含める
+- 命中時のダメージは `damage * (((z_i - z_j) / 2) + 1)` とする。`z_i` は
+  攻撃者、`z_j` は対象の地形高さで、rules version `1.0` では結果を 0 未満にしない
+  (下限 0)。legacy は下限を設けない。同じ tick の複数命中は合算して適用する
 - 装甲がダメージを吸収した後の `armor` は 0 未満にせず、超過ダメージだけを HP に適用する
 - ユーザー指定の戦場 bounds は最小範囲として維持し、初期配置が外側にある場合だけ該当方向へ拡張して警告する
 - scenarioでunitごとの `initial_positions` を明示した場合は分布からの配置生成を
@@ -52,29 +57,29 @@
 - 可視化とアニメーションの詳細方針は `docs/visualization-rules.md` に分離して記録する
 
 ## Rules to Record Here
-- ユニットの基本ステータス
-- ダメージ計算ルール
-- 射程、移動、ターゲティングのルール
-- 地形補正のルール
-- ランダム性の扱い
-- 勝敗判定のルール
+- 本書に未記録の規則が見つかった場合はここへ列挙し、記録後に上の節へ移す
+- ランダム性の扱いのうち、subsystem 名と trial ID は `docs/model-contract.md` に
+  記録済み。本書にはそれ以外の規則を追加する
 
 ## Change Policy
 - シミュレーション結果が変わる変更は、実装前または同時にここを更新する
 - 後方互換を壊す場合は、その理由を記録する
 - `Battle.simulate()` の frame 戻り値と `Battle.simulate_k()` の DataFrame 戻り値は
-  rules version 1 でも維持し、構造化結果は `Battle.result_` へ追加する
+  rules version 1.0 でも維持し、構造化結果は `Battle.result_` へ追加する
 - 再現性の保証範囲は、同一 battlesim、Python、NumPy の版と同一 platform 上とする
   platform や依存ライブラリをまたぐ bit 単位一致は保証しない
 
 ## Termination And Outcome
 
-- `elimination`: 生存陣営が1つになった
+- `objective`: 単独陣営が objective zone を必要 tick 占有した
 - `mutual_destruction`: 生存陣営が0になった
-- `timeout`: `max_ticks` に達した
+- `elimination`: 生存陣営が1つになった
 - `stalemate`: HP、armor、位置、objective progress に一定 tick 変化がない
+- `timeout`: `max_ticks` に達した
+- 同じ tick で複数の条件を満たす場合は、上の列挙順(`objective` が最優先、
+  `timeout` が最後)で判定する
 - winner は team ID の tuple とする。未決着・相打ちは空、同tickに別objectiveを
-  達成した場合は複数を許す。複雑な同盟はrules version 1では扱わない
+  達成した場合は複数を許す(複数になりうるのは `objective` のみ)。複雑な同盟はrules version 1.0では扱わない
 
 ## Spatial Rules Version 1
 
@@ -83,5 +88,5 @@
   視線より地形が高い場合に遮蔽とする
 - unit は `Radius` を持ち、移動線分の接触時刻で停止した後、残る重なりを
   soft separationで解消する
-- armor は rules version 1 では damage を先に吸収する追加耐久値として維持する
+- armor は rules version 1.0 では damage を先に吸収する追加耐久値として維持する
 - objective は円形 zone とし、単独陣営が占有して必要 tick を満たした場合に勝利する

@@ -35,8 +35,10 @@
    戦闘結果の frame を生成する
 2. view model
    frame から HP 比率、target 座標、生死、地形補助値などの表示用データを生成する
+   (`build_frame_view()`, `build_unit_parameter_views()`, `advance_playback()`)
 3. renderer
    view model を Matplotlib の Figure や animation へ変換する
+   (`quiver_fight()`, `quiver_fight_debug()`, 1 frame 用の `quiver_frame_debug()`)
 4. interface
    CLI、ローカル Web UI、notebook から renderer を呼び出す
 
@@ -66,9 +68,9 @@ view model は UI framework に依存させず、固定 frame を使った単体
 - 現在 HP
 - 現在 target
 - unit type
+- 現在 armor(パラメータ画面)
 
 ### Optional In Later Iterations
-- 現在 armor
 - AI 種別
 - 射程円
 - 数値ラベルによる詳細ステータス
@@ -93,6 +95,7 @@ view model は UI framework に依存させず、固定 frame を使った単体
   選択・実行できるようにする
 - `Damage demo` presetは `scenarios/damage-demo.toml` を読み込み、parameter画面で
   Armorが先に減った後にHPが減る様子を確認できるようにする
+  (scenarioの内容は `docs/current-spec.md` を参照)
 - ローカル Web UI の戦闘画面では、固定されたユニット番号を重畳する
 - target line は必要時だけ表示できるようにする
 - 線、ラベル、バーは地形背景より前面に描画する
@@ -171,6 +174,7 @@ view model は UI framework に依存させず、固定 frame を使った単体
 ### First Public Entry Points
 - `Battle.sim_jupyter(func=...)` から `quiver_fight_debug()` を渡して使えること
 - `Battle.sim_export(func=...)` から `quiver_fight_debug()` を渡して使えること
+- ローカル Web UI と `battlesim-render` が `quiver_frame_debug()` で 1 frame を描画できること
 
 ## Phase 3B Decisions
 
@@ -193,7 +197,8 @@ view model は UI framework に依存させず、固定 frame を使った単体
   rules version 1では `range`、legacy frameでは `range * ((z^2 / 3) + 1)`
 - `damage_factor`
   高低差による与ダメージ倍率
-  現行実装では `((z - target_z) / 2) + 1`
+  現行実装では `((z - target_z) / 2) + 1`。rules version 1 では 0 未満にしない
+  (`docs/simulation-rules.md` を参照)
 
 ### Terrain Overlay Design
 - 地形由来の補助情報は debug view でのみ表示する
@@ -208,7 +213,9 @@ view model は UI framework に依存させず、固定 frame を使った単体
 - 死亡ユニットの terrain overlay は表示しない
 
 ### Notebook Controls
-- 表示 UI では `show_hp`, `show_target_lines`, `show_terrain_text` を切り替えられるようにする
+- notebook と `quiver_fight_debug()` では `show_hp`, `show_target_lines`,
+  `show_terrain_text` を切り替えられるようにする。ローカル Web UI で切り替えられるのは
+  target line のみで、HP バーと地形テキストは重畳しない(Visibility Policy 参照)
 - 表示 UI では `frame index` を slider から調整できるようにする
 - notebook 固有の widget は必須機能としない
 

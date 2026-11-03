@@ -107,12 +107,14 @@
 - `pos`
   初期位置サンプリング設定
 - `init_ai`
-  初期ターゲット選択方針。`random`, `nearest`, `close_weak` に対応する
+  初期ターゲット選択方針。「Per-Unit Target Selection」に列挙した方針に対応する
 - `rolling_ai`
-  現在対象の死亡後に使うターゲット再選択方針。
-  `random`, `nearest`, `close_weak` に対応する
+  現在対象の死亡後に使うターゲット再選択方針。`init_ai` と同じ方針に対応する
 - `decision_ai`
   戦闘行動方針
+- `doctrine_weights`
+  threat score の重み。distance、durability、expected damage、objective importance の
+  順で有限な非負値4個、合計が正でなければならない。既定値は `(0.25, 0.15, 0.5, 0.1)`
 - `initial_positions`
   unitごとの明示的な `(x, y)` 座標。指定時は `n` 個ちょうど必要で、
   `pos` による乱数配置より優先される
@@ -183,6 +185,10 @@ NumPy の乱数分布をラップするクラス。
 - `Miss`
 - `Movement Speed`
 - `Range`
+
+任意列:
+- `Attack Interval`: 攻撃間隔tick数。欠損時は `1.0`
+- `Radius`: unit半径。欠損時は `0.1`
 
 ### Preprocessing
 読み込み後に以下の前処理が行われる。
@@ -371,12 +377,8 @@ rules version 1では、移動元と移動先の標高差が上りの場合だ�
 - `distance_factor = 1 - 0.5 * distance / effective_range`
 - `hit_chance = acc * (1 - dodge) * distance_factor`
 
-攻撃判定は実効射程内でのみ行われるため、距離係数は射手直上で 1、
-射程限界で 0.5 となる。計算結果は `[0, 1]` へ制限する。
-
-データベース列 `Miss` は歴史的な列名として維持する。
-値はそのユニットが攻撃対象になったときの回避率であり、攻撃者自身の
-ミス率ではない。
+計算結果は `[0, 1]` へ制限する。式の意味、距離係数の範囲、`Miss` 列が
+回避率である点は `docs/simulation-rules.md` を正本とする。
 
 ### Tick Resolution
 - tick開始時のsnapshotから全unitのtarget、移動、攻撃予定を計算する
@@ -392,10 +394,9 @@ rules version 1では、移動元と移動先の標高差が上りの場合だ�
 - 攻撃後はcooldownを設定し、0になったtickに再攻撃できる
 
 ### Damage
-基本ダメージは地形高低差補正を含む。
-
-現行式:
-- `base_damage * (((z_i - z_j) / 2) + 1)`
+基本ダメージは地形高低差補正を含む。式と下限(rules version 1 は 0 未満にしない、
+legacy は下限なし)は `docs/simulation-rules.md` を正本とする。実装は
+`simulation/_tactical.py` の `damage_factor` と命中時のダメージ計算である。
 
 ### Armor Handling
 - 相手の `armor` が残っている場合、まず装甲へダメージを与える
@@ -463,7 +464,7 @@ legacy低レベルAIでは従来の絶対標高による射程・移動補正を
 - `move_factor`
 - `effective_range`
 - `damage_factor`
-- `density`
+- `density`(rules version 1 の frames のみ。legacy の frames には含まれない)
 
 ### `simulate_k()`
 戻り値は `pandas.DataFrame`。
@@ -547,6 +548,9 @@ notebook は教材、探索、利用例として扱う。
 - frame slider
 - target line の表示切り替え
 - 表示中 frame の PNG download
+- 初期配置の編集(X/Y表の直接編集、unit選択後のマップクリック)。
+  検証は `validate_placement_rows()`、クリック反映は `apply_mouse_placement()`、
+  初期表は `initial_placement_rows()`(いずれも `battlesim/placement.py`)を共通で使う
 
 UI は戦闘ロジックや描画ロジックを実装せず、`BattleScenario` と
 `quiver_frame_debug()` を呼び出す interface として扱う。
@@ -573,12 +577,15 @@ UI は戦闘ロジックや描画ロジックを実装せず、`BattleScenario` 
 
 ローカル Web UI のscenario選択:
 - `Custom battle`: 従来どおり左右のunit、unit数、terrainを指定する
-- `Damage demo`: `scenarios/damage-demo.toml` を読み込み、ArmorからHPの順に
-  damageが適用される短い1対1戦を再生する
+- `Damage demo`: `scenarios/damage-demo.toml` を読み込んで再生する
+  (scenarioの内容は次節の同梱 scenario を参照)
 
 ### Static Rendering CLI
 `battlesim-render` は TOML scenario を実行し、指定 frame を画像へ保存する。
-既定では最終 frame を描画する。
+引数は `scenario`(TOML)、`output`(画像)、`--frame`(既定 `-1` = 最終 frame)、
+`--hide-hp`、`--hide-target-lines`、`--show-terrain-text`。
+ローカル Web UI と異なり、既定で HP bar と target line を描画し、
+`--hide-*` で隠す。
 
 同梱 scenario:
 - `scenarios/clone-vs-droid.toml`
@@ -596,35 +603,27 @@ UI は戦闘ロジックや描画ロジックを実装せず、`BattleScenario` 
 - target index と target 座標
 - frame に存在する場合は地形補助値
 
-### Planned Visualization Direction
-独自拡張では、通常表示とデバッグ表示を分けて扱う方針を取る。
+各 unit のパラメータパネル用には `UnitParameterView` と
+`build_unit_parameter_views()` を、再生位置の更新には `advance_playback()` を使う
+(いずれも `battlesim/plot/_viewmodel.py`)。
 
-- 通常表示
-  現行の `quiver_fight()` に近い軽量表示を維持する
-- デバッグ表示
-  HP、target line、地形補助情報を重ねて、個々のユニット挙動を解析しやすくする
-
-デバッグ表示で優先的に扱う候補は次の通り。
-- ユニット単位: HP, target, unit type, alive/dead
-- 地形由来: 地形高さ, 移動補正, 実効射程, 高低差ダメージ補正
-
-詳細方針は `docs/visualization-rules.md` を参照する。
-
-### Notebook-Independent Direction
-今後の可視化は次の層へ分離する。
+### Visualization Layers
+通常表示とデバッグ表示を分け、次の層に分離している。方針の正本は
+`docs/visualization-rules.md` である。
 
 - simulation frame
-- UI framework に依存しない view model
-- Matplotlib renderer
+- UI framework に依存しない view model(`build_frame_view()` など)
+- Matplotlib renderer(`quiver_fight()`, `quiver_fight_debug()`, `quiver_frame_debug()`)
 - CLI / ローカル Web UI / notebook などの interface
 
-既存の `sim_jupyter()` は後方互換性のため維持するが、主要な操作導線はローカル Web UI へ移す。
+既存の `sim_jupyter()` は後方互換性のため維持し、主要な操作導線はローカル Web UI とする。
 
 ## Validation And Error Behavior
 
 ### Typical Runtime Errors
 - `create_army()` 前に軍構成へ依存するプロパティへアクセスすると `AttributeError`
-- 不正な地形 form や bounds を指定すると `AttributeError` または `TypeError`
+- 不正な地形 form や bounds を指定すると `AttributeError`、`TypeError`、
+  または `ValueError`(非有限の値など)
 - 未対応の地形 dtype を指定すると `ValueError`
 - 不正なデータベース形式を渡すと `ValueError`
 
@@ -636,10 +635,7 @@ UI は戦闘ロジックや描画ロジックを実装せず、`BattleScenario` 
 - ユニットデータには必須列がそろっている必要がある
 - unit 名は空でなく、大文字小文字を無視して一意である必要がある
 - unit 数値列は有限の数値である必要がある
-- `HP > 0`, `Armor >= 0`, `Damage >= 0`
-- `Accuracy` と `Miss` は 0..100
-- `Movement Speed >= 0`, `Range > 0`
-- 任意の `Attack Interval >= 1`, `Radius > 0`
+- 各列の数値制約は `docs/simulation-rules.md` を正本とする
 
 ## Known Limitations
 - `AI.defensive` は未実装
@@ -656,4 +652,5 @@ UI は戦闘ロジックや描画ロジックを実装せず、`BattleScenario` 
 - この文書
 - `docs/simulation-rules.md`
 - 関連テスト
+- 契約が変わる場合は `docs/model-contract.md`, `docs/dataset-contract.md`
 - 必要なら `README.md`

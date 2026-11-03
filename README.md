@@ -30,19 +30,15 @@
 `battlesim` の要件:
 
 - python (>= 3.12)
-- numpy (>= 1.11.0)
-- pandas (>= 0.25.1)
-- matplotlib (>= 3.1.1)
-- numba (>= 0.45)
+- 依存パッケージ（numpy、pandas、matplotlib、numba、pydantic など）とその版は
+  [pyproject.toml](pyproject.toml) を参照
 
 アニメーションを gif として出力する場合は、次も必要です。
 
 - ffmpeg (>=4.2)
 
-必須ではありませんが、次のパッケージがあると利用体験が大きく向上します。
+必須ではありませんが、`notebook` extra（Jupyter 一式）があると利用体験が大きく向上します。
 Jupyter プロジェクトに馴染みがない場合は [こちら](https://jupyter.org/) を参照してください。
-
-- jupyter (1.0.0)
 
 ### GitHub リポジトリをクローンする場合
 
@@ -86,14 +82,9 @@ uv run --extra app streamlit run apps/battle_viewer.py
 make app
 ```
 
-ビューアには、戦闘の設定、フレーム再生速度の調整、再生/一時停止/リプレイ操作、
-フレームスライダー、デバッグオーバーレイの切り替え、PNG ダウンロードが備わっており、
-notebook は不要です。シミュレーション完了後は、既定で最初のフレームから
-毎秒 1 フレームで再生が始まります。
-
-再生中、戦闘ビューでは各ユニットに `#1`、`#2` のような固定番号が表示されます。
-隣のパラメータパネルは同じ番号を使い、各ユニットの陣営、種別、状態、HP、
-アーマー、ターゲット、地形由来の値を、戦闘ビューを覆うことなく表示します。
+ビューアは notebook を必要としません。操作と表示の詳細は
+[docs/current-spec.md](docs/current-spec.md)、表示方針は
+[docs/visualization-rules.md](docs/visualization-rules.md) を参照してください。
 
 非インタラクティブに使う場合は、TOML のシナリオを直接画像へレンダリングできます。
 
@@ -101,8 +92,9 @@ notebook は不要です。シミュレーション完了後は、既定で最�
 uv run battlesim-render scenarios/clone-vs-droid.toml battle.png
 ```
 
-ダメージ適用の様子を分かりやすく確認するには、同梱の 5 tick の決闘シナリオを使います。
-両ユニットとも、HP より先にアーマーが減ります。
+ダメージ適用の様子を確認するには、同梱の決闘シナリオ
+[scenarios/damage-demo.toml](scenarios/damage-demo.toml) を使います
+（内容は [docs/current-spec.md](docs/current-spec.md) を参照）。
 
 ```console
 uv run battlesim-render scenarios/damage-demo.toml damage-demo.png --frame 3
@@ -119,6 +111,8 @@ uv run battlesim-render scenarios/damage-demo.toml damage-demo.png --frame 3
 uv run pytest -v
 ```
 
+Python を変更した後の一括検証は、後述の `make check` を使います。
+
 ### フォーマット
 
 プロジェクトのフォーマットと lint には次を使います。
@@ -127,16 +121,17 @@ uv run pytest -v
 make format
 ```
 
-推奨の読み取り専用検証ワークフローには次を使います。
+推奨の検証ワークフローには次を使います。lint、フォーマット検査、型検査、
+テストを一括で実行します。
 
 ```
 make check
 ```
 
-既定の `ruff` と `ty` のワークフローは、現状 `battlesim/` とテストスイートを対象とします。
-一部のテストは実行時検証を確かめるために意図的に不正な値を渡しているため、
-その意図が型検査器に明示されるよう注釈を付けています。notebook が中心の
-`examples/` と `teaching/` ディレクトリは、日常的な静的解析と型検査から意図的に除外されています。
+検査の対象範囲と型検査の方針は [AGENTS.md](AGENTS.md) と
+[docs/implementation-rules.md](docs/implementation-rules.md) を参照してください。
+notebook が中心の `examples/` と `teaching/` ディレクトリは、日常的な静的解析と
+型検査から意図的に除外されています。
 
 ## 使い方: 基本編
 
@@ -153,6 +148,15 @@ import battlesim as bsm
 次のコードも推奨します。
 
 ```python
+import matplotlib.pyplot as plt
+plt.rcParams["animation.html"] = "html5"
+```
+
+2 行目は、アニメーションを描画する際に重要です（利用にあたっていくつか問題があるため）。
+
+seed と rules を明示して実行し、結果を取得する例です。
+
+```python
 battle = bsm.Battle(seed=42, rules=bsm.BattleRules(max_ticks=200))
 # これまでどおり軍を設定してから:
 frames = battle.simulate()
@@ -163,12 +167,6 @@ print(battle.result_.winner_team_ids)
 `simulate()` は引き続きアニメーションのフレームを返します。バージョン付きの結果、
 seed、終了理由、チーム別の指標、イベントログは `result_` から取得できます。
 
-```python
-import matplotlib.pyplot as plt
-plt.rcParams["animation.html"] = "html5"
-```
-
-2 行目は、アニメーションを描画する際に重要です（利用にあたっていくつか問題があるため）。
 重い処理はすべて `bsm.Battle` オブジェクトが担い、行いたい操作のための簡潔なインターフェースを提供します。
 
 ```python
@@ -271,12 +269,9 @@ runs = battle.simulate_k(k=40)
 これは機械学習に似たインターフェースを作る第一歩です。結果は分類（勝利チーム）や回帰
 （生存ユニット数）のターゲットになり、ユニット構成やエンジンの各側面などを入力にできます。
 
-## v0.3.6 の新機能
+## 変更履歴
 
-この [最新の更新](CHANGELOG.md) には、次のような注目すべき変更があります。
-
-- **地形（Terrain）** の導入。アニメーション化された戦闘に 3D 的な疑似的奥行きを与える大きな拡張です。高さがユニットの移動速度に影響し、高い丘では（最大 50% の）地形ペナルティが適用されます。また、丘の上のユニットは射程が伸び、敵ユニットを高所から撃ち下ろすとダメージが増加します。
-- *アーマー* の導入。アーマーは、ユニットを損傷から守るもう一つの体力バッファとして働きます。
+各版の変更点は [CHANGELOG.md](CHANGELOG.md) を参照してください。
 
 ## 教材シリーズ
 
@@ -294,7 +289,7 @@ Jupyter notebook 形式の
 3. シミュレーションのプロットと、パフォーマンス駆動の開発
 
 これはプロジェクトの歩みをたどり直す形で、現在も開発が進められています。
-これに関連するレガシー関数はすべて *battlesim/legacy.py* にあります。
+これに関連するレガシー関数はすべて *battlesim/__legacy.py* にあります。
 
 ## 今後の計画
 

@@ -9,7 +9,7 @@
 - `ty` で `battlesim/`, `apps/`, `tests/` の全体を常時検査する
 - `mypy --strict` を安全性中核の静的型検査の正とする。対象一覧は
   `pyproject.toml` の `tool.mypy.files` に明記し、入力境界、契約、乱数、
-  dataset、validation、および対応テストを含める
+  dataset、validation、および修正したmoduleの対応テストを含める
 - 既存のNumba/legacy領域は修正したmodule単位で `tool.mypy.files` へ追加し、
   strict対象を縮小しない。この段階的拡大をtype-safety ratchetとする
 - `Any` は未検証の外部入力や型情報を提供しない依存ライブラリとの局所的な境界に
@@ -31,7 +31,8 @@
 - 実験的な仕様は、将来切り替えやすい形で追加する
 - rules version と dataset schema version はコード定数として一元管理する
 - 乱数は subsystem ごとの `numpy.random.Generator` から取得し、グローバル乱数へ
-  暗黙に依存しない
+  暗黙に依存しない。ただし `Battle` が使わない legacy 低レベル API
+  (`simulation.simulate_battle` など)は現状グローバル乱数を使う
 - 長時間 batch は trial ID により再開・重複排除できるようにする
 
 ## Current Extension Points
@@ -51,13 +52,8 @@
 - 期待値は小さなscenarioの手計算、固定した契約例、独立したreference実装から
   導出する。検査対象と同じproduction helperや同じ制御フローで期待値を作らない
 - mockやfixtureで、正しさを主張する対象そのものを置き換えない
-- バグ修正では修正前に再発防止テストが失敗することを確認する。その他の重要な
-  挙動変更では、可能な範囲で一時的なfault injectionまたはmutationを1件以上行い、
-  新規テストが代表的な誤実装を検出することを確認する
-- 一時的なmutationは必ず元へ戻し、commitしない。生存した意味のあるmutationには
-  テストを追加し、同値または対象外なら理由を変更説明へ記録する
-- coverage率とmutation scoreは不足を探す診断指標であり、仕様適合性や
-  モデル妥当性の合格基準として単独では使用しない
+- バグ修正と重要な挙動変更での再発防止テストの失敗確認、fault injection、
+  mutation、coverage率とmutation scoreの扱いは `docs/validation-plan.md` に従う
 - テスト実行は `uv run pytest -v` を基準にする
 - 静的解析と型チェックは `make check` を基準にする
 - 入力modelには正常系、境界値、NaN/無限大、boolと数値の混同、未知キー、
@@ -86,8 +82,8 @@ snapshot化するテスト、test orderやglobal random stateへ依存するテ�
 - 実装前提や制約はコード中ではなく docs に残す
 
 ## Enforcement
-- `make check` は Ruff lint、format check、全体ty、mypy strict、pytestの
-  全てを実行する
+- `make check` は pre-commit 設定の検証、Ruff lint、format check、全体ty、
+  mypy strict、pytestの全てを実行する
 - CIも `make check` と同じ対象を検査し、一部ファイルだけを対象にして成功扱いしない
 - `pre-commit` stageでは変更ファイルの種類にかかわらず `make check` を毎回実行する
 - cloneまたはdependency sync後は `make install-hooks` でGit hookを導入する
