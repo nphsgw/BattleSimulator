@@ -3,7 +3,7 @@
 ## Language And Structure
 - 実装は既存の Python パッケージ構成に沿って進める
 - 変更は責務ごとに分け、無関係なファイルへ波及させすぎない
-- 開発環境は `uv` と Python 3.12 以上を基準にする
+- 開発環境は `uv` と Python 3.14 以上を基準にする
 
 ## Type Safety And Input Boundaries
 - 静的型検査は `mypy` に一本化し、`battlesim/`, `apps/`, `tests/` の全体を常時検査する

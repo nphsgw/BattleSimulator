@@ -37,7 +37,7 @@ BattleSimulator を、明示的な戦術入力から再現可能な結果分布�
   検査対象と同じproduction helperで生成しない
 - バグ修正では修正前の失敗を確認する。重要な挙動変更では可能な範囲で一時的な
   fault injectionまたはmutationにより、新規テストが誤実装を検出することを確認する
-- 開発環境は `uv` と Python 3.12 以上を前提にする
+- 開発環境は `uv` と Python 3.14 以上を前提にする
 
 ## Type Safety And Input Boundaries
 - `mypy` は `apps/`, `battlesim/`, `tests/` 全体へ適用する

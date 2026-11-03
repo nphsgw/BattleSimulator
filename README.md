@@ -29,7 +29,7 @@
 
 `battlesim` の要件:
 
-- python (>= 3.12)
+- python (>= 3.14)
 - 依存パッケージ（numpy、pandas、matplotlib、numba、pydantic など）とその版は
   [pyproject.toml](pyproject.toml) を参照
 
