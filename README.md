@@ -47,7 +47,7 @@ Jupyter プロジェクトに馴染みがない場合は [こちら](https://jup
 ```
 git clone https://github.com/gregparkes/BattleSimulator
 cd BattleSimulator
-uv python install 3.12
+uv python install 3.14
 uv sync --extra all --extra notebook
 ```
 

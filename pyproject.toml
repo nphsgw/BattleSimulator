@@ -69,7 +69,7 @@ select = ["E4", "E7", "E9", "F", "I"]
 docstring-code-format = true
 
 [tool.mypy]
-python_version = "3.12"
+python_version = "3.14"
 follow_imports = "silent"
 show_error_codes = true
 warn_redundant_casts = true
